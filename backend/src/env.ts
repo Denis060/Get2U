@@ -11,6 +11,7 @@ const envSchema = z.object({
   BACKEND_URL: z.string().optional(),
   DATABASE_URL: z.string().default("file:./dev.db"),
   BETTER_AUTH_SECRET: z.string().min(1, "BETTER_AUTH_SECRET is required"),
+  ADMIN_EMAIL: z.string().email().optional(),
 });
 
 /**

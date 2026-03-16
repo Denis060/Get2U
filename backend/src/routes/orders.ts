@@ -2,10 +2,12 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../prisma";
 import { auth } from "../auth";
+import { CreateOrderSchema, UpdateOrderStatusSchema } from "../types";
 import {
-  CreateOrderSchema,
-  UpdateOrderStatusSchema,
-} from "../types";
+  notifyAdminNewOrder,
+  notifyCustomerOrderAccepted,
+  notifyCustomerOrderCompleted,
+} from "../notifications";
 
 type AuthVariables = {
   user: typeof auth.$Infer.Session.user | null;
@@ -17,44 +19,27 @@ const ordersRouter = new Hono<{ Variables: AuthVariables }>();
 // GET /api/orders - List orders based on role
 ordersRouter.get("/", async (c) => {
   const user = c.get("user");
-  if (!user) {
-    return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
-  }
+  if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+
+  const include = {
+    customer: { select: { id: true, name: true, email: true, image: true } },
+    agent: { select: { id: true, name: true, email: true, image: true } },
+    vehicle: { select: { id: true, make: true, model: true, year: true, color: true, plate: true } },
+  };
 
   let orders;
-
   if (user.role === "admin") {
-    orders = await prisma.order.findMany({
-      include: {
-        customer: { select: { id: true, name: true, email: true, image: true } },
-        agent: { select: { id: true, name: true, email: true, image: true } },
-        vehicle: { select: { id: true, make: true, model: true, year: true, color: true, plate: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    orders = await prisma.order.findMany({ include, orderBy: { createdAt: "desc" } });
   } else if (user.role === "agent") {
     orders = await prisma.order.findMany({
-      where: {
-        OR: [
-          { agentId: user.id },
-          { status: "pending" },
-        ],
-      },
-      include: {
-        customer: { select: { id: true, name: true, email: true, image: true } },
-        agent: { select: { id: true, name: true, email: true, image: true } },
-        vehicle: { select: { id: true, make: true, model: true, year: true, color: true, plate: true } },
-      },
+      where: { OR: [{ agentId: user.id }, { status: "pending" }] },
+      include,
       orderBy: { createdAt: "desc" },
     });
   } else {
     orders = await prisma.order.findMany({
       where: { customerId: user.id },
-      include: {
-        customer: { select: { id: true, name: true, email: true, image: true } },
-        agent: { select: { id: true, name: true, email: true, image: true } },
-        vehicle: { select: { id: true, make: true, model: true, year: true, color: true, plate: true } },
-      },
+      include,
       orderBy: { createdAt: "desc" },
     });
   }
@@ -65,12 +50,8 @@ ordersRouter.get("/", async (c) => {
 // POST /api/orders - Create an order (customers only)
 ordersRouter.post("/", zValidator("json", CreateOrderSchema), async (c) => {
   const user = c.get("user");
-  if (!user) {
-    return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
-  }
-  if (user.role !== "customer") {
-    return c.json({ error: { message: "Only customers can create orders", code: "FORBIDDEN" } }, 403);
-  }
+  if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+  if (user.role !== "customer") return c.json({ error: { message: "Only customers can create orders", code: "FORBIDDEN" } }, 403);
 
   const body = c.req.valid("json");
 
@@ -94,15 +75,23 @@ ordersRouter.post("/", zValidator("json", CreateOrderSchema), async (c) => {
     },
   });
 
+  // Notify admin about the new order (fire-and-forget)
+  notifyAdminNewOrder({
+    id: order.id,
+    serviceType: order.serviceType,
+    category: order.category,
+    pickupAddress: order.pickupAddress,
+    carLocation: order.carLocation,
+    customer: { name: order.customer!.name, email: order.customer!.email },
+  });
+
   return c.json({ data: order }, 201);
 });
 
 // GET /api/orders/:id - Get order details
 ordersRouter.get("/:id", async (c) => {
   const user = c.get("user");
-  if (!user) {
-    return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
-  }
+  if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
 
   const order = await prisma.order.findUnique({
     where: { id: c.req.param("id") },
@@ -113,17 +102,12 @@ ordersRouter.get("/:id", async (c) => {
     },
   });
 
-  if (!order) {
-    return c.json({ error: { message: "Order not found", code: "NOT_FOUND" } }, 404);
-  }
+  if (!order) return c.json({ error: { message: "Order not found", code: "NOT_FOUND" } }, 404);
 
-  // Only allow access to own orders or if agent/admin
-  if (user.role === "customer" && order.customerId !== user.id) {
+  if (user.role === "customer" && order.customerId !== user.id)
     return c.json({ error: { message: "Forbidden", code: "FORBIDDEN" } }, 403);
-  }
-  if (user.role === "agent" && order.agentId !== user.id && order.status !== "pending") {
+  if (user.role === "agent" && order.agentId !== user.id && order.status !== "pending")
     return c.json({ error: { message: "Forbidden", code: "FORBIDDEN" } }, 403);
-  }
 
   return c.json({ data: order });
 });
@@ -131,47 +115,39 @@ ordersRouter.get("/:id", async (c) => {
 // PATCH /api/orders/:id/status - Update order status
 ordersRouter.patch("/:id/status", zValidator("json", UpdateOrderStatusSchema), async (c) => {
   const user = c.get("user");
-  if (!user) {
-    return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
-  }
+  if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
 
   const orderId = c.req.param("id");
   const { status, completionNote } = c.req.valid("json");
 
   const order = await prisma.order.findUnique({ where: { id: orderId } });
-  if (!order) {
-    return c.json({ error: { message: "Order not found", code: "NOT_FOUND" } }, 404);
-  }
+  if (!order) return c.json({ error: { message: "Order not found", code: "NOT_FOUND" } }, 404);
 
-  // Customers can only cancel their own pending orders
   if (user.role === "customer") {
-    if (order.customerId !== user.id) {
-      return c.json({ error: { message: "Forbidden", code: "FORBIDDEN" } }, 403);
-    }
-    if (status !== "cancelled" || order.status !== "pending") {
+    if (order.customerId !== user.id) return c.json({ error: { message: "Forbidden", code: "FORBIDDEN" } }, 403);
+    if (status !== "cancelled" || order.status !== "pending")
       return c.json({ error: { message: "Customers can only cancel pending orders", code: "BAD_REQUEST" } }, 400);
-    }
   }
-
-  // Agents can update status of their accepted orders
-  if (user.role === "agent") {
-    if (order.agentId !== user.id) {
-      return c.json({ error: { message: "Forbidden", code: "FORBIDDEN" } }, 403);
-    }
-  }
+  if (user.role === "agent" && order.agentId !== user.id)
+    return c.json({ error: { message: "Forbidden", code: "FORBIDDEN" } }, 403);
 
   const updated = await prisma.order.update({
     where: { id: orderId },
-    data: {
-      status,
-      completionNote: completionNote ?? undefined,
-    },
+    data: { status, completionNote: completionNote ?? undefined },
     include: {
       customer: { select: { id: true, name: true, email: true, image: true } },
       agent: { select: { id: true, name: true, email: true, image: true } },
       vehicle: { select: { id: true, make: true, model: true, year: true, color: true, plate: true } },
     },
   });
+
+  // Notify customer when their order is completed
+  if (status === "completed" && updated.customer) {
+    notifyCustomerOrderCompleted({
+      serviceType: updated.serviceType,
+      customer: { name: updated.customer.name, email: updated.customer.email },
+    });
+  }
 
   return c.json({ data: updated });
 });
@@ -179,35 +155,33 @@ ordersRouter.patch("/:id/status", zValidator("json", UpdateOrderStatusSchema), a
 // PATCH /api/orders/:id/accept - Agent accepts an order
 ordersRouter.patch("/:id/accept", async (c) => {
   const user = c.get("user");
-  if (!user) {
-    return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
-  }
-  if (user.role !== "agent") {
-    return c.json({ error: { message: "Only agents can accept orders", code: "FORBIDDEN" } }, 403);
-  }
+  if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+  if (user.role !== "agent") return c.json({ error: { message: "Only agents can accept orders", code: "FORBIDDEN" } }, 403);
 
   const orderId = c.req.param("id");
   const order = await prisma.order.findUnique({ where: { id: orderId } });
 
-  if (!order) {
-    return c.json({ error: { message: "Order not found", code: "NOT_FOUND" } }, 404);
-  }
-  if (order.status !== "pending") {
-    return c.json({ error: { message: "Order is no longer available", code: "BAD_REQUEST" } }, 400);
-  }
+  if (!order) return c.json({ error: { message: "Order not found", code: "NOT_FOUND" } }, 404);
+  if (order.status !== "pending") return c.json({ error: { message: "Order is no longer available", code: "BAD_REQUEST" } }, 400);
 
   const updated = await prisma.order.update({
     where: { id: orderId },
-    data: {
-      agentId: user.id,
-      status: "accepted",
-    },
+    data: { agentId: user.id, status: "accepted" },
     include: {
       customer: { select: { id: true, name: true, email: true, image: true } },
       agent: { select: { id: true, name: true, email: true, image: true } },
       vehicle: { select: { id: true, make: true, model: true, year: true, color: true, plate: true } },
     },
   });
+
+  // Notify customer that their order was accepted
+  if (updated.customer && updated.agent) {
+    notifyCustomerOrderAccepted({
+      serviceType: updated.serviceType,
+      customer: { name: updated.customer.name, email: updated.customer.email },
+      agent: { name: updated.agent.name },
+    });
+  }
 
   return c.json({ data: updated });
 });
