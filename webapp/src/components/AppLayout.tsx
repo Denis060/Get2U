@@ -1,5 +1,6 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useSession, signOut } from "@/lib/auth-client";
+import FloatingChat from "@/components/FloatingChat";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -132,6 +133,8 @@ export default function AppLayout() {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      <FloatingChat />
 
       {/* Mobile Bottom Tabs */}
       {isMobile ? (

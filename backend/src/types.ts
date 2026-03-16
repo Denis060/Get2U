@@ -118,6 +118,18 @@ export type VehicleResponse = {
   location: string | null;
 };
 
+export const AdminUpdateRoleSchema = z.object({
+  role: UserRole,
+});
+
+export const AdminApproveAgentSchema = z.object({
+  approved: z.boolean(),
+});
+
+export const AdminAssignAgentSchema = z.object({
+  agentId: z.string().min(1),
+});
+
 export const SendMessageSchema = z.object({
   content: z.string().min(1).max(2000),
 });
