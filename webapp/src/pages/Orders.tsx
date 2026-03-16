@@ -54,7 +54,7 @@ export default function Orders() {
   const px = isMobile ? "px-4" : "";
 
   return (
-    <div ref={containerRef} className="overflow-y-auto">
+    <div ref={containerRef} className="min-h-screen">
       {/* Pull to refresh indicator */}
       {pullDistance > 0 ? (
         <div

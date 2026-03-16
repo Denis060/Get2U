@@ -79,21 +79,44 @@
     border-color: hsl(var(--border));
   }
 
+  html {
+    scroll-behavior: smooth;
+    /* Prevent iOS text size inflation on orientation change */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* Fill the whole screen */
+    height: 100%;
+  }
+
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-family: 'DM Sans', system-ui, sans-serif;
+    height: 100%;
+    /* Allow native overscroll bounce on iOS */
+    overscroll-behavior-y: auto;
+    /* Ensure body fills screen */
+    min-height: 100dvh;
   }
 
-  html {
-    scroll-behavior: smooth;
+  #root {
+    height: 100%;
+    min-height: 100dvh;
+    isolation: isolate;
   }
 
-  /* Custom scrollbar */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: hsl(var(--secondary)); }
-  ::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary) / 0.5); }
+  /* Prevent iOS input zoom — all inputs must be at least 16px */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* Custom scrollbar (desktop only) */
+  @media (pointer: fine) {
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: hsl(var(--secondary)); }
+    ::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary) / 0.5); }
+  }
 }
 
 /* Safe area insets for notch/home indicator */
@@ -104,6 +127,18 @@
 /* Native-feeling touch interactions */
 * { -webkit-tap-highlight-color: transparent; }
 button, [role="button"] { touch-action: manipulation; }
+
+/* Momentum scrolling on iOS for scroll containers */
+.overflow-y-auto, .overflow-y-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* Prevent text selection on interactive elements */
+button, [role="button"], nav, .no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
 
 /* Skeleton shimmer animation */
 @keyframes shimmer {

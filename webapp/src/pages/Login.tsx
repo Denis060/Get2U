@@ -124,10 +124,13 @@ export default function Login() {
                   <Input
                     id="si-email"
                     type="email"
+                    inputMode="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
                     placeholder="you@example.com"
                     value={siEmail}
                     onChange={(e) => { setSiEmail(e.target.value); if (siError) setSiError(""); }}
-                    className="h-12 rounded-xl pl-12 text-base"
+                    className="h-12 rounded-xl pl-12"
                     autoComplete="email"
                     autoFocus
                   />
@@ -165,10 +168,13 @@ export default function Login() {
                   <Input
                     id="su-name"
                     type="text"
+                    inputMode="text"
+                    autoCapitalize="words"
+                    autoCorrect="off"
                     placeholder="John Doe"
                     value={suName}
                     onChange={(e) => { setSuName(e.target.value); if (suError) setSuError(""); }}
-                    className="h-12 rounded-xl pl-12 text-base"
+                    className="h-12 rounded-xl pl-12"
                     autoFocus
                   />
                 </div>
@@ -180,10 +186,13 @@ export default function Login() {
                   <Input
                     id="su-email"
                     type="email"
+                    inputMode="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
                     placeholder="you@example.com"
                     value={suEmail}
                     onChange={(e) => { setSuEmail(e.target.value); if (suError) setSuError(""); }}
-                    className="h-12 rounded-xl pl-12 text-base"
+                    className="h-12 rounded-xl pl-12"
                     autoComplete="email"
                   />
                 </div>
