@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Auth models (required by Better Auth)
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  role          String    @default("customer") // customer, agent, admin
+  phone         String?
+  address       String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  // App-specific
+  ordersAsCustomer Order[]   @relation("CustomerOrders")
+  ordersAsAgent    Order[]   @relation("AgentOrders")
+  vehicles         Vehicle[]
+  agentProfile     AgentProfile?
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// App models
+model AgentProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idNumber    String?
+  idVerified  Boolean  @default(false)
+  approved    Boolean  @default(false)
+  rating      Float    @default(0)
+  totalJobs   Int      @default(0)
+  earnings    Float    @default(0)
+  available   Boolean  @default(true)
+  bio         String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Vehicle {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  make      String
+  model     String
+  year      String?
+  color     String?
+  plate     String?
+  location  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+}
+
+model Order {
+  id             String   @id @default(cuid())
+  customerId     String
+  customer       User     @relation("CustomerOrders", fields: [customerId], references: [id])
+  agentId        String?
+  agent          User?    @relation("AgentOrders", fields: [agentId], references: [id])
+
+  // Service info
+  category       String   // delivery, car_service
+  serviceType    String   // send_mail, send_package, pickup_dropoff, car_wash, fueling, oil_change, vehicle_help
+  status         String   @default("pending") // pending, accepted, in_progress, completed, cancelled
+
+  // Delivery fields
+  pickupAddress  String?
+  dropoffAddress String?
+  packageType    String?  // letter, small_package, large_package
+  courierService String?  // dhl, fedex, ups, usps, local
+
+  // Car service fields
+  vehicleId      String?
+  vehicle        Vehicle? @relation(fields: [vehicleId], references: [id])
+  carLocation    String?
+
+  // Common
+  description    String?
+  estimatedPrice Float?
+  finalPrice     Float?
+  notes          String?
+  completionNote String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
