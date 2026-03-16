@@ -14,6 +14,7 @@ import NewRequest from "./pages/NewRequest";
 import Orders from "./pages/Orders";
 import OrderDetail from "./pages/OrderDetail";
 import Profile from "./pages/Profile";
+import Pricing from "./pages/Pricing";
 import AgentDashboard from "./pages/agent/AgentDashboard";
 import MyJobs from "./pages/agent/MyJobs";
 import Earnings from "./pages/agent/Earnings";
@@ -70,6 +71,7 @@ const App = () => (
             <Route path="/orders" element={<Orders />} />
             <Route path="/orders/:id" element={<OrderDetail />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/pricing" element={<Pricing />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

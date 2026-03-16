@@ -10,10 +10,10 @@ import { getServiceIcon, getServiceLabel, getServiceIconColor } from "@/lib/serv
 import type { OrderResponse } from "@/types/orders";
 
 const QUICK_ACTIONS = [
-  { type: "send_mail", label: "Send Mail", desc: "Letters & documents", icon: Mail, color: "bg-amber-500/15 text-amber-400 border-amber-500/20" },
-  { type: "send_package", label: "Send Package", desc: "Any size package", icon: Package, color: "bg-blue-500/15 text-blue-400 border-blue-500/20" },
-  { type: "pickup_dropoff", label: "Pickup & Drop-off", desc: "Pick up & deliver", icon: Truck, color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" },
-  { type: "car_wash", label: "Car Services", desc: "Wash, fuel & more", icon: Car, color: "bg-purple-500/15 text-purple-400 border-purple-500/20" },
+  { type: "send_mail", label: "Send Mail", desc: "Letters & documents", priceHint: "From $99.99/mo", icon: Mail, color: "bg-amber-500/15 text-amber-400 border-amber-500/20" },
+  { type: "send_package", label: "Send Package", desc: "Any size package", priceHint: "From $99.99/mo", icon: Package, color: "bg-blue-500/15 text-blue-400 border-blue-500/20" },
+  { type: "pickup_dropoff", label: "Pickup & Drop-off", desc: "Pick up & deliver", priceHint: "$5 + courier fee", icon: Truck, color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" },
+  { type: "car_wash", label: "Car Services", desc: "Wash, fuel & more", priceHint: "From $89.99/mo", icon: Car, color: "bg-purple-500/15 text-purple-400 border-purple-500/20" },
 ];
 
 const stagger = {
@@ -77,6 +77,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm font-semibold text-foreground">{action.label}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{action.desc}</p>
+                <p className="mt-1 text-xs font-medium text-primary/80">{action.priceHint}</p>
               </div>
             </motion.button>
           ))}

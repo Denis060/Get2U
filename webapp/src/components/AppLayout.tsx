@@ -9,6 +9,7 @@ import {
   User,
   LogOut,
   ArrowLeftRight,
+  Tag,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -23,6 +24,7 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
   { path: "/dashboard", label: "Home", icon: LayoutDashboard },
   { path: "/new-request", label: "New Request", icon: Plus },
+  { path: "/pricing", label: "Pricing", icon: Tag },
   { path: "/orders", label: "My Orders", icon: ClipboardList },
   { path: "/profile", label: "Profile", icon: User },
 ];
