@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
+import { api } from "@/lib/api";
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 60;
@@ -11,7 +12,10 @@ const RESEND_COOLDOWN = 60;
 export default function VerifyOtp() {
   const navigate = useNavigate();
   const location = useLocation();
-  const email = (location.state as { email?: string })?.email;
+  const state = location.state as { email?: string; name?: string; isSignUp?: boolean } | null;
+  const email = state?.email;
+  const name = state?.name;
+  const isSignUp = state?.isSignUp ?? false;
 
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [error, setError] = useState<string>("");
@@ -53,6 +57,10 @@ export default function VerifyOtp() {
           setOtp(Array(OTP_LENGTH).fill(""));
           inputRefs.current[0]?.focus();
         } else {
+          // If signing up with a name, save it to the profile
+          if (isSignUp && name) {
+            try { await api.patch("/api/me", { name }); } catch { /* non-critical */ }
+          }
           navigate("/dashboard");
         }
       } catch {
@@ -61,7 +69,7 @@ export default function VerifyOtp() {
         setIsLoading(false);
       }
     },
-    [email, navigate]
+    [email, navigate, isSignUp, name]
   );
 
   const handleChange = (index: number, value: string) => {
