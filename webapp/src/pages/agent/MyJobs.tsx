@@ -5,18 +5,20 @@ import { api } from "@/lib/api";
 import { motion } from "framer-motion";
 import {
   MapPin,
-  ChevronRight,
   Inbox,
   Loader2,
   Play,
   CheckCircle2,
   MessageSquare,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/StatusBadge";
 import { getServiceIcon, getServiceLabel, getServiceIconColor } from "@/lib/service-helpers";
 import type { OrderResponse } from "@/types/orders";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +37,7 @@ export default function MyJobs() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [activeFilter, setActiveFilter] = useState("active");
   const [completionDialogOrder, setCompletionDialogOrder] = useState<OrderResponse | null>(null);
   const [completionNote, setCompletionNote] = useState("");
@@ -85,7 +88,8 @@ export default function MyJobs() {
 
   return (
     <div className="space-y-6">
-      <div>
+      {/* Page header */}
+      <div className={cn("pb-2 pt-4", isMobile ? "px-4" : "")}>
         <h1 className="text-2xl font-bold">My Jobs</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Manage jobs you have accepted
@@ -93,7 +97,7 @@ export default function MyJobs() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-2">
+      <div className={cn("flex gap-2", isMobile ? "px-4" : "")}>
         {FILTER_TABS.map((tab) => (
           <Button
             key={tab.key}
@@ -112,122 +116,133 @@ export default function MyJobs() {
       </div>
 
       {/* Job list */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-28 animate-pulse rounded-xl bg-card" />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-card/50 py-16 text-center">
-          <Inbox className="mb-3 h-10 w-10 text-muted-foreground/50" />
-          <p className="text-sm font-medium text-muted-foreground">
-            {activeFilter === "active"
-              ? "No active jobs"
-              : "No completed jobs yet"}
-          </p>
-          {activeFilter === "active" ? (
-            <Button
-              size="sm"
-              className="mt-4 bg-emerald-500 text-black hover:bg-emerald-400"
-              onClick={() => navigate("/agent")}
-            >
-              Browse Available Jobs
-            </Button>
-          ) : null}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((order, idx) => {
-            const Icon = getServiceIcon(order.serviceType);
-            const iconColor = getServiceIconColor(order.serviceType);
-            const location =
-              order.pickupAddress ?? order.carLocation ?? "Location not specified";
-
-            return (
-              <motion.div
-                key={order.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.04 }}
-                className="rounded-xl border border-border/40 bg-card p-4 transition-colors hover:border-emerald-500/20"
+      <div className={cn(isMobile ? "px-4" : "")}>
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-28 animate-pulse rounded-xl bg-card" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-card/50 py-16 text-center">
+            <Inbox className="mb-3 h-10 w-10 text-muted-foreground/50" />
+            <p className="text-sm font-medium text-muted-foreground">
+              {activeFilter === "active"
+                ? "No active jobs"
+                : "No completed jobs yet"}
+            </p>
+            {activeFilter === "active" ? (
+              <Button
+                size="sm"
+                className="mt-4 bg-emerald-500 text-black hover:bg-emerald-400"
+                onClick={() => navigate("/agent")}
               >
-                <div className="flex items-start gap-4">
-                  <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-secondary ${iconColor}`}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold">
-                        {getServiceLabel(order.serviceType)}
-                      </p>
-                      <StatusBadge status={order.status} />
-                    </div>
+                Browse Available Jobs
+              </Button>
+            ) : null}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filtered.map((order, idx) => {
+              const Icon = getServiceIcon(order.serviceType);
+              const iconColor = getServiceIconColor(order.serviceType);
+              const location =
+                order.pickupAddress ?? order.carLocation ?? "Location not specified";
 
-                    {order.customer ? (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Customer: {order.customer.name}
-                      </p>
-                    ) : null}
-
-                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                      <MapPin className="h-3.5 w-3.5 shrink-0 text-emerald-400/70" />
-                      <span className="truncate">{location}</span>
+              return (
+                <motion.div
+                  key={order.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.04 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate(`/agent/jobs/${order.id}`)}
+                  className="cursor-pointer rounded-xl border border-border/40 bg-card p-4 transition-colors hover:border-emerald-500/20 active:bg-card/80"
+                >
+                  <div className="flex items-start gap-4">
+                    <div
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-secondary ${iconColor}`}
+                    >
+                      <Icon className="h-5 w-5" />
                     </div>
-                    {order.dropoffAddress ? (
-                      <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                        <MapPin className="h-3.5 w-3.5 shrink-0 text-amber-400/70" />
-                        <span className="truncate">{order.dropoffAddress}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold">
+                          {getServiceLabel(order.serviceType)}
+                        </p>
+                        <StatusBadge status={order.status} />
                       </div>
-                    ) : null}
 
-                    {/* Action buttons */}
-                    <div className="mt-3 flex items-center justify-between gap-2">
-                      <button
-                        onClick={() => navigate(`/orders/${order.id}`)}
-                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        View Details
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </button>
-
-                      {order.status === "accepted" ? (
-                        <Button
-                          size="sm"
-                          onClick={() => handleStartJob(order.id)}
-                          disabled={statusMutation.isPending}
-                          className="bg-emerald-500 text-black hover:bg-emerald-400"
-                        >
-                          {statusMutation.isPending ? (
-                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Play className="mr-1.5 h-3.5 w-3.5" />
-                          )}
-                          Start Job
-                        </Button>
-                      ) : order.status === "in_progress" ? (
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            setCompletionDialogOrder(order);
-                            setCompletionNote("");
-                          }}
-                          className="bg-amber-500 text-black hover:bg-amber-400"
-                        >
-                          <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
-                          Complete Job
-                        </Button>
+                      {order.customer ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Customer: {order.customer.name}
+                        </p>
                       ) : null}
+
+                      <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                        <MapPin className="h-3.5 w-3.5 shrink-0 text-emerald-400/70" />
+                        <span className="truncate">{location}</span>
+                      </div>
+                      {order.dropoffAddress ? (
+                        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                          <MapPin className="h-3.5 w-3.5 shrink-0 text-amber-400/70" />
+                          <span className="truncate">{order.dropoffAddress}</span>
+                        </div>
+                      ) : null}
+
+                      {/* Action buttons */}
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/agent/jobs/${order.id}`);
+                          }}
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          View Details
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </button>
+
+                        {order.status === "accepted" ? (
+                          <Button
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartJob(order.id);
+                            }}
+                            disabled={statusMutation.isPending}
+                            className="bg-emerald-500 text-black hover:bg-emerald-400"
+                          >
+                            {statusMutation.isPending ? (
+                              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Play className="mr-1.5 h-3.5 w-3.5" />
+                            )}
+                            Start Job
+                          </Button>
+                        ) : order.status === "in_progress" ? (
+                          <Button
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCompletionDialogOrder(order);
+                              setCompletionNote("");
+                            }}
+                            className="bg-amber-500 text-black hover:bg-amber-400"
+                          >
+                            <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                            Complete Job
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Completion dialog */}
       <Dialog

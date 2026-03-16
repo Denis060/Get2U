@@ -2,6 +2,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useSession, signOut } from "@/lib/auth-client";
 import FloatingChat from "@/components/FloatingChat";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTheme } from "@/hooks/use-theme";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Briefcase,
@@ -10,6 +11,8 @@ import {
   User,
   LogOut,
   ArrowLeftRight,
+  Moon,
+  Sun,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -22,7 +25,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 const AGENT_NAV_ITEMS = [
-  { path: "/agent", label: "Available Jobs", icon: Briefcase },
+  { path: "/agent", label: "Jobs", icon: Briefcase },
   { path: "/agent/my-jobs", label: "My Jobs", icon: ClipboardCheck },
   { path: "/agent/earnings", label: "Earnings", icon: Wallet },
   { path: "/profile", label: "Profile", icon: User },
@@ -33,15 +36,11 @@ export default function AgentLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { theme, toggleTheme } = useTheme();
 
   const user = session?.user;
   const initials = user?.name
-    ? user.name
-        .split(" ")
-        .map((w) => w[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
+    ? user.name.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2)
     : "?";
 
   const handleSignOut = async () => {
@@ -50,30 +49,26 @@ export default function AgentLayout() {
   };
 
   const isActive = (path: string) => {
-    if (path === "/agent") {
-      return location.pathname === "/agent";
-    }
+    if (path === "/agent") return location.pathname === "/agent";
     return location.pathname === path || location.pathname.startsWith(path + "/");
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      {/* Top Navbar */}
-      <header className="sticky top-0 z-50 border-b border-emerald-500/20 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
-          <button
-            onClick={() => navigate("/agent")}
-            className="flex items-center gap-2 font-syne text-xl font-bold tracking-tight"
-          >
-            <span className="text-emerald-400">Errand</span>
-            <span className="text-foreground">Go</span>
-            <span className="ml-1 rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
-              Agent
-            </span>
-          </button>
-
-          {/* Desktop nav */}
-          {!isMobile ? (
+    <div className="flex min-h-[100dvh] flex-col bg-background">
+      {/* Desktop Top Navbar */}
+      {!isMobile && (
+        <header className="sticky top-0 z-50 border-b border-emerald-500/20 bg-background/80 backdrop-blur-xl">
+          <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
+            <button
+              onClick={() => navigate("/agent")}
+              className="flex items-center gap-2 font-syne text-xl font-bold tracking-tight"
+            >
+              <span className="text-emerald-400">Errand</span>
+              <span className="text-foreground">Go</span>
+              <span className="ml-1 rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+                Agent
+              </span>
+            </button>
             <nav className="flex items-center gap-1">
               {AGENT_NAV_ITEMS.map((item) => (
                 <button
@@ -91,49 +86,57 @@ export default function AgentLayout() {
                 </button>
               ))}
             </nav>
-          ) : null}
-
-          {/* User avatar dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="rounded-full ring-2 ring-transparent transition-all hover:ring-emerald-400/40 focus:outline-none focus:ring-emerald-400/40">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.image ?? undefined} />
-                  <AvatarFallback className="bg-emerald-500/20 text-xs font-semibold text-emerald-400">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleTheme}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary"
+              >
+                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={() => navigate("/profile")}>
-                <User className="mr-2 h-4 w-4" />
-                Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/dashboard")}>
-                <ArrowLeftRight className="mr-2 h-4 w-4" />
-                Switch to Customer
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign Out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </header>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="rounded-full ring-2 ring-transparent transition-all hover:ring-emerald-400/40 focus:outline-none">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.image ?? undefined} />
+                      <AvatarFallback className="bg-emerald-500/20 text-xs font-semibold text-emerald-400">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => navigate("/profile")}>
+                    <User className="mr-2 h-4 w-4" />Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                    <ArrowLeftRight className="mr-2 h-4 w-4" />Switch to Customer
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </header>
+      )}
+
+      {/* Mobile safe area top spacer */}
+      {isMobile && (
+        <div style={{ height: "env(safe-area-inset-top)" }} className="bg-background shrink-0" />
+      )}
 
       {/* Main Content */}
-      <main className={cn("flex-1", isMobile ? "pb-20" : "")}>
+      <main className={cn("flex-1", isMobile ? "pb-[calc(4rem+env(safe-area-inset-bottom))]" : "")}>
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="mx-auto w-full max-w-7xl px-4 py-6"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+            className={cn(isMobile ? "w-full" : "mx-auto w-full max-w-7xl px-4 py-6")}
           >
             <Outlet />
           </motion.div>
@@ -142,36 +145,45 @@ export default function AgentLayout() {
 
       <FloatingChat />
 
-      {/* Mobile Bottom Tabs */}
-      {isMobile ? (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-emerald-500/20 bg-background/95 backdrop-blur-xl">
-          <div className="flex h-16 items-center justify-around">
+      {/* Mobile Bottom Tab Bar */}
+      {isMobile && (
+        <nav
+          className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-background/95 backdrop-blur-2xl"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
+          <div className="flex h-16 items-stretch justify-around">
             {AGENT_NAV_ITEMS.map((item) => {
               const active = isActive(item.path);
               return (
-                <button
+                <motion.button
                   key={item.path}
                   onClick={() => navigate(item.path)}
+                  whileTap={{ scale: 0.82 }}
                   className={cn(
-                    "flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-1 transition-colors",
-                    active ? "text-emerald-400" : "text-muted-foreground"
+                    "relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2",
+                    active ? "text-emerald-400" : "text-muted-foreground/70"
                   )}
                 >
-                  <item.icon className={cn("h-5 w-5", active ? "text-emerald-400" : "")} />
-                  <span className="text-[10px] font-medium">{item.label}</span>
-                  {active ? (
+                  {active && (
                     <motion.div
-                      layoutId="agentActiveTab"
-                      className="absolute bottom-1 h-0.5 w-6 rounded-full bg-emerald-400"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      layoutId="agentTabBg"
+                      className="absolute inset-x-3 inset-y-1 rounded-xl bg-emerald-500/10"
+                      transition={{ type: "spring", stiffness: 500, damping: 35 }}
                     />
-                  ) : null}
-                </button>
+                  )}
+                  <item.icon
+                    className={cn("relative h-5 w-5", active ? "text-emerald-400" : "")}
+                    strokeWidth={active ? 2.5 : 1.8}
+                  />
+                  <span className={cn("relative text-[10px] font-semibold tracking-tight", active ? "text-emerald-400" : "text-muted-foreground/70")}>
+                    {item.label}
+                  </span>
+                </motion.button>
               );
             })}
           </div>
         </nav>
-      ) : null}
+      )}
     </div>
   );
 }

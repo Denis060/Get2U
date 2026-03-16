@@ -17,6 +17,8 @@ import { getServiceIcon, getServiceLabel, getServiceIconColor } from "@/lib/serv
 import { SERVICE_TYPES, type ServiceType } from "@/types/orders";
 import type { OrderResponse } from "@/types/orders";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 function timeAgo(dateStr: string): string {
   const now = Date.now();
@@ -57,6 +59,7 @@ export default function AgentDashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const firstName = session?.user?.name?.split(" ")[0] ?? "Agent";
 
   // Fetch available (pending) orders
@@ -128,15 +131,15 @@ export default function AgentDashboard() {
   ];
 
   return (
-    <div className="space-y-8">
-      {/* Greeting */}
-      <div>
-        <h1 className="text-2xl font-bold md:text-3xl">
-          Welcome, <span className="text-emerald-400">{firstName}</span>
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Find and accept errand jobs near you
-        </p>
+    <div className="space-y-6">
+      {/* Page header */}
+      <div className={cn("flex items-center justify-between pb-2 pt-4", isMobile ? "px-4" : "")}>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Agent Mode</p>
+          <h1 className="text-2xl font-bold leading-tight">
+            Welcome, <span className="text-emerald-400">{firstName}</span>
+          </h1>
+        </div>
       </div>
 
       {/* Stats Bar */}
@@ -144,7 +147,7 @@ export default function AgentDashboard() {
         variants={stagger}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-3 gap-3"
+        className={cn("grid grid-cols-3 gap-3", isMobile ? "px-4" : "")}
       >
         {stats.map((stat) => (
           <motion.div
@@ -160,7 +163,7 @@ export default function AgentDashboard() {
       </motion.div>
 
       {/* Available Jobs */}
-      <section>
+      <section className={cn(isMobile ? "px-4" : "")}>
         <h2 className="mb-4 text-lg font-semibold">Available Jobs</h2>
 
         {loadingAvailable ? (
@@ -197,7 +200,9 @@ export default function AgentDashboard() {
                 <motion.div
                   key={order.id}
                   variants={fadeUp}
-                  className="rounded-xl border border-border/40 bg-card p-4 transition-colors hover:border-emerald-500/30"
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate(`/agent/jobs/${order.id}`)}
+                  className="cursor-pointer rounded-xl border border-border/40 bg-card p-4 transition-colors hover:border-emerald-500/30 active:bg-card/80"
                 >
                   <div className="flex items-start gap-4">
                     <div
@@ -216,6 +221,12 @@ export default function AgentDashboard() {
                           {getCategoryLabel(order.serviceType)}
                         </span>
                       </div>
+
+                      {order.customer ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {order.customer.name}
+                        </p>
+                      ) : null}
 
                       <div className="mt-2 space-y-1">
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -237,13 +248,23 @@ export default function AgentDashboard() {
                       ) : null}
 
                       <div className="mt-3 flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Clock className="h-3.5 w-3.5" />
-                          {timeAgo(order.createdAt)}
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Clock className="h-3.5 w-3.5" />
+                            {timeAgo(order.createdAt)}
+                          </div>
+                          {order.estimatedPrice != null ? (
+                            <span className="text-xs font-semibold text-emerald-400">
+                              ${order.estimatedPrice.toFixed(2)}
+                            </span>
+                          ) : null}
                         </div>
                         <Button
                           size="sm"
-                          onClick={() => acceptMutation.mutate(order.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            acceptMutation.mutate(order.id);
+                          }}
                           disabled={acceptMutation.isPending}
                           className="bg-amber-500 text-black hover:bg-amber-400"
                         >
