@@ -27,9 +27,9 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { path: "/dashboard", label: "Home", icon: LayoutDashboard },
-  { path: "/new-request", label: "New Request", icon: Plus },
+  { path: "/new-request", label: "New", icon: Plus },
   { path: "/pricing", label: "Pricing", icon: Tag },
-  { path: "/orders", label: "My Orders", icon: ClipboardList },
+  { path: "/orders", label: "Orders", icon: ClipboardList },
   { path: "/profile", label: "Profile", icon: User },
 ];
 
@@ -42,12 +42,7 @@ export default function AppLayout() {
 
   const user = session?.user;
   const initials = user?.name
-    ? user.name
-        .split(" ")
-        .map((w) => w[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
+    ? user.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
     : "?";
 
   const handleSignOut = async () => {
@@ -55,26 +50,22 @@ export default function AppLayout() {
     navigate("/login");
   };
 
-  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + "/");
+  const isActive = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(path + "/");
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      {/* Top Navbar */}
-      <header
-        className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl"
-        style={{ paddingTop: "env(safe-area-inset-top)" }}
-      >
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="flex items-center gap-2 font-syne text-xl font-bold tracking-tight"
-          >
-            <span className="text-primary">Errand</span>
-            <span className="text-foreground">Go</span>
-          </button>
-
-          {/* Desktop nav */}
-          {!isMobile ? (
+    <div className="flex min-h-[100dvh] flex-col bg-background">
+      {/* Desktop Top Navbar - hidden on mobile */}
+      {!isMobile && (
+        <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+          <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="flex items-center gap-2 font-syne text-xl font-bold tracking-tight"
+            >
+              <span className="text-primary">Get2u</span>
+              <span className="text-foreground">Errand</span>
+            </button>
             <nav className="flex items-center gap-1">
               {NAV_ITEMS.map((item) => (
                 <button
@@ -92,60 +83,57 @@ export default function AppLayout() {
                 </button>
               ))}
             </nav>
-          ) : null}
-
-          <div className="flex items-center gap-2">
-            {/* Dark mode toggle */}
-            <button
-              onClick={toggleTheme}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              aria-label="Toggle theme"
-            >
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
-
-            {/* User avatar dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="rounded-full ring-2 ring-transparent transition-all hover:ring-primary/40 focus:outline-none focus:ring-primary/40">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.image ?? undefined} />
-                    <AvatarFallback className="bg-primary/20 text-xs font-semibold text-primary">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => navigate("/profile")}>
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/agent")}>
-                  <ArrowLeftRight className="mr-2 h-4 w-4" />
-                  Switch to Agent
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleTheme}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              >
+                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="rounded-full ring-2 ring-transparent transition-all hover:ring-primary/40 focus:outline-none focus:ring-primary/40">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.image ?? undefined} />
+                      <AvatarFallback className="bg-primary/20 text-xs font-semibold text-primary">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => navigate("/profile")}>
+                    <User className="mr-2 h-4 w-4" />Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/agent")}>
+                    <ArrowLeftRight className="mr-2 h-4 w-4" />Switch to Agent
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
+
+      {/* Mobile safe area top spacer */}
+      {isMobile && (
+        <div style={{ height: "env(safe-area-inset-top)" }} className="bg-background shrink-0" />
+      )}
 
       {/* Main Content */}
-      <main className={cn("flex-1", isMobile ? "pb-20" : "")}>
+      <main className={cn("flex-1", isMobile ? "pb-[calc(4rem+env(safe-area-inset-bottom))]" : "")}>
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="mx-auto w-full max-w-7xl px-4 py-6"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+            className={cn(isMobile ? "w-full" : "mx-auto w-full max-w-7xl px-4 py-6")}
           >
             <Outlet />
           </motion.div>
@@ -154,40 +142,50 @@ export default function AppLayout() {
 
       <FloatingChat />
 
-      {/* Mobile Bottom Tabs */}
-      {isMobile ? (
+      {/* Mobile Bottom Tab Bar */}
+      {isMobile && (
         <nav
-          className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-background/95 backdrop-blur-xl"
+          className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-background/95 backdrop-blur-2xl"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
-          <div className="flex h-16 items-center justify-around">
+          <div className="flex h-16 items-stretch justify-around">
             {NAV_ITEMS.map((item) => {
               const active = isActive(item.path);
               return (
                 <motion.button
                   key={item.path}
                   onClick={() => navigate(item.path)}
-                  whileTap={{ scale: 0.85 }}
+                  whileTap={{ scale: 0.82 }}
                   className={cn(
-                    "flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-1 transition-colors",
-                    active ? "text-primary" : "text-muted-foreground"
+                    "relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2",
+                    active ? "text-primary" : "text-muted-foreground/70"
                   )}
                 >
-                  <item.icon className={cn("h-5 w-5", active ? "text-primary" : "")} />
-                  <span className="text-[10px] font-medium">{item.label}</span>
-                  {active ? (
+                  {active && (
                     <motion.div
-                      layoutId="activeTab"
-                      className="absolute bottom-1 h-0.5 w-6 rounded-full bg-primary"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      layoutId="tabBg"
+                      className="absolute inset-x-3 inset-y-1 rounded-xl bg-primary/10"
+                      transition={{ type: "spring", stiffness: 500, damping: 35 }}
                     />
-                  ) : null}
+                  )}
+                  <item.icon
+                    className={cn("relative h-5 w-5", active ? "text-primary" : "")}
+                    strokeWidth={active ? 2.5 : 1.8}
+                  />
+                  <span
+                    className={cn(
+                      "relative text-[10px] font-semibold tracking-tight",
+                      active ? "text-primary" : "text-muted-foreground/70"
+                    )}
+                  >
+                    {item.label}
+                  </span>
                 </motion.button>
               );
             })}
           </div>
         </nav>
-      ) : null}
+      )}
     </div>
   );
 }

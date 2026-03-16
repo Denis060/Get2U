@@ -9,6 +9,7 @@ import StatusBadge from "@/components/StatusBadge";
 import SkeletonOrderCard from "@/components/SkeletonOrderCard";
 import { getServiceIcon, getServiceLabel, getServiceIconColor } from "@/lib/service-helpers";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import type { OrderResponse } from "@/types/orders";
 
@@ -31,6 +32,7 @@ export default function Orders() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [activeFilter, setActiveFilter] = useState("all");
+  const isMobile = useIsMobile();
 
   const { data: orders, isLoading, refetch } = useQuery({
     queryKey: ["orders"],
@@ -49,35 +51,38 @@ export default function Orders() {
   );
   const filtered = filterOrders(sorted, activeFilter);
 
+  const px = isMobile ? "px-4" : "";
+
   return (
-    <div ref={containerRef} className="space-y-6 overflow-y-auto">
+    <div ref={containerRef} className="overflow-y-auto">
       {/* Pull to refresh indicator */}
       {pullDistance > 0 ? (
         <div
           className="flex items-center justify-center overflow-hidden transition-all"
           style={{ height: pullDistance }}
         >
-          <RefreshCw className={`h-5 w-5 text-primary ${isRefreshing ? "animate-spin" : ""}`} />
+          <RefreshCw className={cn("h-5 w-5 text-primary", isRefreshing ? "animate-spin" : "")} />
         </div>
       ) : null}
 
-      <div>
-        <h1 className="text-2xl font-bold">My Orders</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Track and manage your requests</p>
+      {/* Page header */}
+      <div className={cn("pb-4 pt-4", px)}>
+        <h1 className="text-2xl font-bold text-foreground">My Orders</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">Track and manage your requests</p>
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+      {/* Filter chips */}
+      <div className={cn("mb-4 flex gap-2 overflow-x-auto pb-1 scrollbar-none", isMobile ? "px-4" : "")}>
         {FILTER_TABS.map((tab) => (
           <motion.button
             key={tab.key}
             whileTap={{ scale: 0.93 }}
             onClick={() => setActiveFilter(tab.key)}
             className={cn(
-              "shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all min-h-[36px]",
+              "shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-all",
               activeFilter === tab.key
                 ? "bg-primary text-primary-foreground shadow-sm"
-                : "bg-secondary text-secondary-foreground hover:bg-muted"
+                : "bg-secondary text-secondary-foreground"
             )}
           >
             {tab.label}
@@ -87,23 +92,23 @@ export default function Orders() {
 
       {/* Order list */}
       {isLoading ? (
-        <div className="space-y-3">
+        <div className={cn("space-y-3", px)}>
           {[1, 2, 3, 4].map((i) => <SkeletonOrderCard key={i} />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-card/50 py-16 text-center">
-          <Inbox className="mb-3 h-10 w-10 text-muted-foreground/50" />
-          <p className="text-sm font-medium text-muted-foreground">
+        <div className={cn("flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 bg-card/50 py-16 text-center", px)}>
+          <Inbox className="mb-3 h-10 w-10 text-muted-foreground/40" />
+          <p className="text-sm font-semibold text-muted-foreground">
             {activeFilter === "all" ? "No orders yet" : `No ${activeFilter} orders`}
           </p>
           {activeFilter === "all" ? (
-            <Button size="sm" className="mt-4" onClick={() => navigate("/new-request")}>
+            <Button size="sm" className="mt-4 h-9 rounded-xl" onClick={() => navigate("/new-request")}>
               Create Request
             </Button>
           ) : null}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className={cn("overflow-hidden rounded-2xl border border-border/40 bg-card", px)}>
           {filtered.map((order, idx) => {
             const Icon = getServiceIcon(order.serviceType);
             const iconColor = getServiceIconColor(order.serviceType);
@@ -115,35 +120,39 @@ export default function Orders() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.04 }}
-                whileHover={{ x: 4 }}
-                whileTap={{ scale: 0.97 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => navigate(`/orders/${order.id}`)}
-                className="flex w-full items-center gap-4 rounded-xl border border-border/40 bg-card p-4 text-left transition-colors hover:bg-secondary"
+                className={cn(
+                  "flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-secondary",
+                  idx < filtered.length - 1 ? "border-b border-border/30" : ""
+                )}
               >
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary ${iconColor}`}>
+                <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary", iconColor)}>
                   <Icon className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{getServiceLabel(order.serviceType)}</p>
+                  <p className="truncate text-sm font-semibold">{getServiceLabel(order.serviceType)}</p>
                   {location ? (
                     <p className="truncate text-xs text-muted-foreground">{location}</p>
                   ) : null}
                   <p className="text-xs text-muted-foreground">
-                    {new Date(order.createdAt).toLocaleDateString()}
+                    {new Date(order.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   {order.estimatedPrice != null ? (
-                    <span className="text-xs font-medium text-foreground">${order.estimatedPrice.toFixed(2)}</span>
+                    <span className="text-xs font-bold text-foreground">${order.estimatedPrice.toFixed(2)}</span>
                   ) : null}
                   <StatusBadge status={order.status} />
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40" />
                 </div>
               </motion.button>
             );
           })}
         </div>
       )}
+
+      {isMobile && <div className="h-6" />}
     </div>
   );
 }

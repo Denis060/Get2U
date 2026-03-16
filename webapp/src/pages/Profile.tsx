@@ -18,6 +18,9 @@ import {
   Plus,
   Trash2,
   Car,
+  ChevronRight,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +45,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useState } from "react";
+import { useTheme } from "@/hooks/use-theme";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import type { UserProfile, VehicleResponse } from "@/types/orders";
 
 const profileSchema = z.object({
@@ -62,11 +68,53 @@ const vehicleSchema = z.object({
 
 type VehicleFormData = z.infer<typeof vehicleSchema>;
 
+interface SettingsRowProps {
+  icon: React.ReactNode;
+  label: string;
+  value?: string;
+  chevron?: boolean;
+  destructive?: boolean;
+  onClick?: () => void;
+  rightEl?: React.ReactNode;
+}
+
+function SettingsRow({ icon, label, value, chevron = true, destructive = false, onClick, rightEl }: SettingsRowProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-secondary",
+        destructive ? "text-destructive" : "text-foreground"
+      )}
+    >
+      <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", destructive ? "bg-destructive/10" : "bg-secondary")}>
+        {icon}
+      </span>
+      <span className={cn("flex-1 text-sm font-medium", destructive ? "text-destructive" : "text-foreground")}>{label}</span>
+      {value ? <span className="text-sm text-muted-foreground">{value}</span> : null}
+      {rightEl ? rightEl : null}
+      {chevron ? <ChevronRight className={cn("h-4 w-4 shrink-0", destructive ? "text-destructive/40" : "text-muted-foreground/40")} /> : null}
+    </button>
+  );
+}
+
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <p className="mb-1 px-4 pt-5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+      {label}
+    </p>
+  );
+}
+
 export default function Profile() {
   const { data: session } = useSession();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [vehicleDialogOpen, setVehicleDialogOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+  const isMobile = useIsMobile();
 
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ["profile"],
@@ -102,6 +150,7 @@ export default function Profile() {
     mutationFn: (data: ProfileFormData) => api.patch<UserProfile>("/api/me", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+      setEditOpen(false);
     },
   });
 
@@ -138,6 +187,8 @@ export default function Profile() {
     ? user.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
     : "?";
 
+  const px = isMobile ? "" : "px-0";
+
   if (profileLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -150,130 +201,133 @@ export default function Profile() {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mx-auto max-w-lg space-y-6"
+      className={cn("pb-6", isMobile ? "" : "mx-auto max-w-lg")}
     >
-      <h1 className="text-2xl font-bold">Profile</h1>
+      {/* Page header */}
+      <div className={cn("pb-2 pt-4", isMobile ? "px-4" : "")}>
+        <h1 className="text-2xl font-bold text-foreground">Profile</h1>
+      </div>
 
-      {/* Avatar & basic info */}
-      <div className="flex items-center gap-4 rounded-xl border border-border/50 bg-card p-5">
-        <Avatar className="h-16 w-16">
+      {/* Avatar card */}
+      <div className={cn("mb-2 flex flex-col items-center gap-3 py-6", isMobile ? "px-4" : "")}>
+        <Avatar className="h-20 w-20 ring-4 ring-primary/20">
           <AvatarImage src={user?.image ?? undefined} />
-          <AvatarFallback className="bg-primary/20 text-lg font-bold text-primary">
+          <AvatarFallback className="bg-primary/20 text-2xl font-bold text-primary">
             {initials}
           </AvatarFallback>
         </Avatar>
-        <div>
-          <p className="text-lg font-semibold">{profile?.name ?? user?.name}</p>
+        <div className="text-center">
+          <p className="text-lg font-bold text-foreground">{profile?.name ?? user?.name}</p>
           <p className="text-sm text-muted-foreground">{profile?.email ?? user?.email}</p>
-          <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+          <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
             <Shield className="h-3 w-3" />
             {profile?.role ?? "customer"}
           </div>
         </div>
       </div>
 
-      {/* Edit form */}
-      <form onSubmit={handleSubmit((d) => updateProfile.mutate(d))} className="space-y-4 rounded-xl border border-border/50 bg-card p-5">
-        <h3 className="text-sm font-semibold">Personal Information</h3>
-
-        <div className="space-y-2">
-          <Label htmlFor="name" className="flex items-center gap-1.5">
-            <User className="h-3.5 w-3.5 text-muted-foreground" /> Name
-          </Label>
-          <Input id="name" {...register("name")} />
-          {errors.name ? <p className="text-xs text-destructive">{errors.name.message}</p> : null}
-        </div>
-
-        <div className="space-y-2">
-          <Label className="flex items-center gap-1.5">
-            <Mail className="h-3.5 w-3.5 text-muted-foreground" /> Email
-          </Label>
-          <Input value={profile?.email ?? ""} disabled className="opacity-60" />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="phone" className="flex items-center gap-1.5">
-            <Phone className="h-3.5 w-3.5 text-muted-foreground" /> Phone
-          </Label>
-          <Input id="phone" placeholder="Enter phone number" {...register("phone")} />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="address" className="flex items-center gap-1.5">
-            <MapPin className="h-3.5 w-3.5 text-muted-foreground" /> Address
-          </Label>
-          <Input id="address" placeholder="Enter your address" {...register("address")} />
-        </div>
-
-        <Button type="submit" className="w-full" disabled={!isDirty || updateProfile.isPending}>
-          {updateProfile.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {updateProfile.isSuccess ? "Saved!" : "Save Changes"}
-        </Button>
-      </form>
-
-      {/* My Vehicles */}
-      <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold">My Vehicles</h3>
-          <Dialog open={vehicleDialogOpen} onOpenChange={setVehicleDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <Plus className="mr-1 h-4 w-4" /> Add
+      {/* Account section */}
+      <SectionHeader label="Account" />
+      <div className={cn("overflow-hidden rounded-2xl border border-border/40 bg-card", isMobile ? "mx-4" : "")}>
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogTrigger asChild>
+            <div>
+              <SettingsRow
+                icon={<User className="h-4 w-4 text-blue-400" />}
+                label="Edit Profile"
+                value={profile?.name}
+              />
+            </div>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Profile</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit((d) => updateProfile.mutate(d))} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="flex items-center gap-1.5">
+                  <User className="h-3.5 w-3.5 text-muted-foreground" /> Name
+                </Label>
+                <Input id="name" className="h-12" {...register("name")} />
+                {errors.name ? <p className="text-xs text-destructive">{errors.name.message}</p> : null}
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <Mail className="h-3.5 w-3.5 text-muted-foreground" /> Email
+                </Label>
+                <Input value={profile?.email ?? ""} disabled className="h-12 opacity-60" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="flex items-center gap-1.5">
+                  <Phone className="h-3.5 w-3.5 text-muted-foreground" /> Phone
+                </Label>
+                <Input id="phone" placeholder="Enter phone number" className="h-12" {...register("phone")} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address" className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-muted-foreground" /> Address
+                </Label>
+                <Input id="address" placeholder="Enter your address" className="h-12" {...register("address")} />
+              </div>
+              <Button type="submit" className="h-12 w-full rounded-xl" disabled={!isDirty || updateProfile.isPending}>
+                {updateProfile.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Save Changes
               </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add Vehicle</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleVehicleSubmit((d) => addVehicle.mutate(d))} className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Make</Label>
-                    <Input placeholder="Toyota" {...registerVehicle("make")} />
-                    {vehicleErrors.make ? <p className="text-xs text-destructive">{vehicleErrors.make.message}</p> : null}
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Model</Label>
-                    <Input placeholder="Camry" {...registerVehicle("model")} />
-                    {vehicleErrors.model ? <p className="text-xs text-destructive">{vehicleErrors.model.message}</p> : null}
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Year</Label>
-                    <Input placeholder="2024" {...registerVehicle("year")} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Color</Label>
-                    <Input placeholder="Black" {...registerVehicle("color")} />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Plate Number</Label>
-                  <Input placeholder="ABC-1234" {...registerVehicle("plate")} />
-                </div>
-                <Button type="submit" className="w-full" disabled={addVehicle.isPending}>
-                  {addVehicle.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Add Vehicle
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+        <div className="border-t border-border/30" />
+        <SettingsRow
+          icon={<Mail className="h-4 w-4 text-muted-foreground" />}
+          label="Email"
+          value={profile?.email ?? user?.email ?? ""}
+          chevron={false}
+        />
+        {profile?.phone ? (
+          <>
+            <div className="border-t border-border/30" />
+            <SettingsRow
+              icon={<Phone className="h-4 w-4 text-muted-foreground" />}
+              label="Phone"
+              value={profile.phone}
+              chevron={false}
+            />
+          </>
+        ) : null}
+        {profile?.address ? (
+          <>
+            <div className="border-t border-border/30" />
+            <SettingsRow
+              icon={<MapPin className="h-4 w-4 text-muted-foreground" />}
+              label="Address"
+              value={profile.address}
+              chevron={false}
+            />
+          </>
+        ) : null}
+      </div>
 
+      {/* Vehicles section */}
+      <SectionHeader label="My Vehicles" />
+      <div className={cn("overflow-hidden rounded-2xl border border-border/40 bg-card", isMobile ? "mx-4" : "")}>
         {vehiclesLoading ? (
-          <div className="h-16 animate-pulse rounded-lg bg-secondary" />
+          <div className="h-14 animate-pulse bg-secondary/50" />
         ) : (vehicles ?? []).length === 0 ? (
-          <p className="text-center text-sm text-muted-foreground py-4">No vehicles added yet</p>
+          <p className="px-4 py-4 text-sm text-muted-foreground">No vehicles added yet</p>
         ) : (
-          <div className="space-y-2">
-            {(vehicles ?? []).map((v) => (
-              <div key={v.id} className="flex items-center gap-3 rounded-lg bg-secondary/50 p-3">
-                <Car className="h-4 w-4 shrink-0 text-muted-foreground" />
+          (vehicles ?? []).map((v, idx) => (
+            <div key={v.id}>
+              {idx > 0 ? <div className="border-t border-border/30" /> : null}
+              <div className="flex items-center gap-3 px-4 py-3.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
+                  <Car className="h-4 w-4 text-muted-foreground" />
+                </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
                     {v.make} {v.model} {v.year ? `(${v.year})` : ""}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {[v.color, v.plate].filter(Boolean).join(" - ") || "No details"}
+                    {[v.color, v.plate].filter(Boolean).join(" · ") || "No details"}
                   </p>
                 </div>
                 <AlertDialog>
@@ -301,28 +355,127 @@ export default function Profile() {
                   </AlertDialogContent>
                 </AlertDialog>
               </div>
-            ))}
-          </div>
+            </div>
+          ))
         )}
+        <div className="border-t border-border/30" />
+        <Dialog open={vehicleDialogOpen} onOpenChange={setVehicleDialogOpen}>
+          <DialogTrigger asChild>
+            <button className="flex w-full items-center gap-3 px-4 py-3.5 text-primary transition-colors active:bg-secondary">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                <Plus className="h-4 w-4 text-primary" />
+              </span>
+              <span className="text-sm font-medium text-primary">Add Vehicle</span>
+            </button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Vehicle</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleVehicleSubmit((d) => addVehicle.mutate(d))} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Make</Label>
+                  <Input placeholder="Toyota" className="h-12" {...registerVehicle("make")} />
+                  {vehicleErrors.make ? <p className="text-xs text-destructive">{vehicleErrors.make.message}</p> : null}
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Model</Label>
+                  <Input placeholder="Camry" className="h-12" {...registerVehicle("model")} />
+                  {vehicleErrors.model ? <p className="text-xs text-destructive">{vehicleErrors.model.message}</p> : null}
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Year</Label>
+                  <Input placeholder="2024" className="h-12" {...registerVehicle("year")} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Color</Label>
+                  <Input placeholder="Black" className="h-12" {...registerVehicle("color")} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Plate Number</Label>
+                <Input placeholder="ABC-1234" className="h-12" {...registerVehicle("plate")} />
+              </div>
+              <Button type="submit" className="h-12 w-full rounded-xl" disabled={addVehicle.isPending}>
+                {addVehicle.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Add Vehicle
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Actions */}
-      <div className="space-y-3">
-        <Button
-          variant="secondary"
-          className="w-full"
+      {/* Preferences section */}
+      <SectionHeader label="Preferences" />
+      <div className={cn("overflow-hidden rounded-2xl border border-border/40 bg-card", isMobile ? "mx-4" : "")}>
+        <SettingsRow
+          icon={theme === "dark" ? <Moon className="h-4 w-4 text-indigo-400" /> : <Sun className="h-4 w-4 text-amber-400" />}
+          label={theme === "dark" ? "Dark Mode" : "Light Mode"}
+          chevron={false}
+          onClick={toggleTheme}
+          rightEl={
+            <div
+              className={cn(
+                "relative h-6 w-11 rounded-full transition-colors",
+                theme === "dark" ? "bg-primary" : "bg-border"
+              )}
+            >
+              <div
+                className={cn(
+                  "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
+                  theme === "dark" ? "translate-x-5" : "translate-x-0.5"
+                )}
+              />
+            </div>
+          }
+        />
+      </div>
+
+      {/* Agent section */}
+      <SectionHeader label="Work" />
+      <div className={cn("overflow-hidden rounded-2xl border border-border/40 bg-card", isMobile ? "mx-4" : "")}>
+        <SettingsRow
+          icon={<ArrowLeftRight className="h-4 w-4 text-emerald-400" />}
+          label="Switch to Agent Mode"
           onClick={() => switchRole.mutate()}
-          disabled={switchRole.isPending}
-        >
-          <ArrowLeftRight className="mr-2 h-4 w-4" />
-          Switch to Agent Mode
-        </Button>
-
-        <Button variant="ghost" className="w-full text-destructive hover:text-destructive" onClick={handleSignOut}>
-          <LogOut className="mr-2 h-4 w-4" />
-          Sign Out
-        </Button>
+        />
       </div>
+
+      {/* Danger zone */}
+      <SectionHeader label="Account" />
+      <div className={cn("overflow-hidden rounded-2xl border border-destructive/20 bg-card", isMobile ? "mx-4" : "")}>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <div>
+              <SettingsRow
+                icon={<LogOut className="h-4 w-4 text-destructive" />}
+                label="Sign Out"
+                destructive
+              />
+            </div>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Sign out?</AlertDialogTitle>
+              <AlertDialogDescription>
+                You will be signed out of your account.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleSignOut}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Sign Out
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
+      <div className="h-4" />
     </motion.div>
   );
 }
