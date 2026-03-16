@@ -61,7 +61,7 @@ export default function Login() {
             className="font-syne text-4xl font-bold tracking-tight"
           >
             <span className="bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 bg-clip-text text-transparent">
-              ErrandGo
+              Get2u Errand
             </span>
           </motion.h1>
           <motion.p

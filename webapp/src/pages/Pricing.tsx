@@ -391,7 +391,7 @@ export default function Pricing() {
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
                   <span className="text-sm text-muted-foreground">
-                    ErrandGo service fee
+                    Get2u Errand service fee
                   </span>
                   <span className="text-sm font-semibold text-primary">
                     $5.00

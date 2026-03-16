@@ -1,137 +1,98 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Syne:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ErrandGo Design System
-   Dark theme with warm amber primary and emerald accent.
+/* Get2u Errand Design System
+   Clean white/light theme with bold orange primary and green accent.
    All colors in HSL format.
 */
 
 @layer base {
   :root {
-    --background: 222 47% 6%;
-    --foreground: 210 20% 95%;
-
-    --card: 222 40% 9%;
-    --card-foreground: 210 20% 95%;
-
-    --popover: 222 40% 9%;
-    --popover-foreground: 210 20% 95%;
-
-    --primary: 38 92% 50%;
-    --primary-foreground: 222 47% 6%;
-
-    --secondary: 220 30% 14%;
-    --secondary-foreground: 210 20% 90%;
-
-    --muted: 218 25% 16%;
-    --muted-foreground: 215 20% 55%;
-
-    --accent: 160 84% 39%;
-    --accent-foreground: 210 20% 98%;
-
+    --background: 0 0% 100%;           /* pure white */
+    --foreground: 220 20% 10%;         /* near black */
+    --card: 0 0% 98%;                  /* off-white cards */
+    --card-foreground: 220 20% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 10%;
+    --primary: 24 95% 48%;             /* bold orange — energy, urgency */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;          /* very light gray */
+    --secondary-foreground: 220 20% 30%;
+    --muted: 220 14% 94%;
+    --muted-foreground: 220 10% 50%;
+    --accent: 142 71% 45%;             /* green — go, success */
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 90%;
+    --input: 220 13% 90%;
+    --ring: 24 95% 48%;
+    --radius: 0.75rem;
 
-    --border: 220 25% 14%;
-    --input: 220 25% 14%;
-    --ring: 38 92% 50%;
-
-    --radius: 0.625rem;
-
-    --sidebar-background: 222 40% 8%;
-    --sidebar-foreground: 210 20% 95%;
-    --sidebar-primary: 38 92% 50%;
-    --sidebar-primary-foreground: 222 47% 6%;
-    --sidebar-accent: 220 30% 14%;
-    --sidebar-accent-foreground: 210 20% 90%;
-    --sidebar-border: 220 25% 14%;
-    --sidebar-ring: 38 92% 50%;
+    /* Sidebar */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 220 20% 10%;
+    --sidebar-primary: 24 95% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 94%;
+    --sidebar-accent-foreground: 220 20% 30%;
+    --sidebar-border: 220 13% 90%;
+    --sidebar-ring: 24 95% 48%;
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 20% 95%;
-
-    --card: 222 40% 9%;
-    --card-foreground: 210 20% 95%;
-
-    --popover: 222 40% 9%;
-    --popover-foreground: 210 20% 95%;
-
-    --primary: 38 92% 50%;
-    --primary-foreground: 222 47% 6%;
-
-    --secondary: 220 30% 14%;
-    --secondary-foreground: 210 20% 90%;
-
-    --muted: 218 25% 16%;
-    --muted-foreground: 215 20% 55%;
-
-    --accent: 160 84% 39%;
-    --accent-foreground: 210 20% 98%;
-
+    /* Same as root for now — app is light-only */
+    --background: 0 0% 100%;
+    --foreground: 220 20% 10%;
+    --card: 0 0% 98%;
+    --card-foreground: 220 20% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 10%;
+    --primary: 24 95% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 20% 30%;
+    --muted: 220 14% 94%;
+    --muted-foreground: 220 10% 50%;
+    --accent: 142 71% 45%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 220 25% 14%;
-    --input: 220 25% 14%;
-    --ring: 38 92% 50%;
-
-    --sidebar-background: 222 40% 8%;
-    --sidebar-foreground: 210 20% 95%;
-    --sidebar-primary: 38 92% 50%;
-    --sidebar-primary-foreground: 222 47% 6%;
-    --sidebar-accent: 220 30% 14%;
-    --sidebar-accent-foreground: 210 20% 90%;
-    --sidebar-border: 220 25% 14%;
-    --sidebar-ring: 38 92% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 90%;
+    --input: 220 13% 90%;
+    --ring: 24 95% 48%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 220 20% 10%;
+    --sidebar-primary: 24 95% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 94%;
+    --sidebar-accent-foreground: 220 20% 30%;
+    --sidebar-border: 220 13% 90%;
+    --sidebar-ring: 24 95% 48%;
   }
 }
 
 @layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: 'DM Sans', system-ui, sans-serif;
+  }
+
   html {
     scroll-behavior: smooth;
   }
 
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground font-sans antialiased;
-    background-image: radial-gradient(
-      ellipse at 50% 0%,
-      hsl(38 92% 50% / 0.03) 0%,
-      transparent 60%
-    );
-    background-attachment: fixed;
-  }
-
   /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: hsl(222 47% 6%);
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: hsl(220 25% 20%);
-    border-radius: 3px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: hsl(38 92% 50% / 0.5);
-  }
-
-  /* Firefox scrollbar */
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: hsl(220 25% 20%) hsl(222 47% 6%);
-  }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: hsl(var(--secondary)); }
+  ::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary) / 0.5); }
 }

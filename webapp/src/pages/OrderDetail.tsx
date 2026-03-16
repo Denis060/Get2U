@@ -10,7 +10,10 @@ import {
   Star,
   Clock,
   Loader2,
+  MessageCircle,
 } from "lucide-react";
+import OrderChat from "@/components/OrderChat";
+import { useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/StatusBadge";
 import { getServiceIcon, getServiceLabel, getServiceIconColor } from "@/lib/service-helpers";
@@ -38,6 +41,7 @@ export default function OrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
 
   const { data: order, isLoading } = useQuery({
     queryKey: ["order", id],
@@ -283,6 +287,15 @@ export default function OrderDetail() {
           </AlertDialogContent>
         </AlertDialog>
       ) : null}
+
+      {/* Chat section */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <h3 className="mb-4 text-sm font-semibold flex items-center gap-2">
+          <MessageCircle className="h-4 w-4 text-primary" />
+          Messages
+        </h3>
+        <OrderChat orderId={order.id} currentUserId={session?.user?.id ?? ""} />
+      </div>
     </motion.div>
   );
 }

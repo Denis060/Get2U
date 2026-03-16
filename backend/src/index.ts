@@ -7,6 +7,7 @@ import { auth } from "./auth";
 import { ordersRouter } from "./routes/orders";
 import { vehiclesRouter } from "./routes/vehicles";
 import { usersRouter } from "./routes/users";
+import { messagesRouter } from "./routes/messages";
 
 const app = new Hono<{
   Variables: {
@@ -61,6 +62,7 @@ app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 app.route("/api/orders", ordersRouter);
 app.route("/api/vehicles", vehiclesRouter);
 app.route("/api", usersRouter);
+app.route("/api/orders/:orderId/messages", messagesRouter);
 
 const port = Number(process.env.PORT) || 3000;
 

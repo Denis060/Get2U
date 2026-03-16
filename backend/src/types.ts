@@ -117,3 +117,16 @@ export type VehicleResponse = {
   plate: string | null;
   location: string | null;
 };
+
+export const SendMessageSchema = z.object({
+  content: z.string().min(1).max(2000),
+});
+
+export type MessageResponse = {
+  id: string;
+  orderId: string;
+  senderId: string;
+  content: string;
+  createdAt: string;
+  sender: { id: string; name: string; email: string; image: string | null; role: string };
+};

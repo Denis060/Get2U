@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useState } from "react";
+import MapPicker from "@/components/MapPicker";
 import type { OrderResponse } from "@/types/orders";
 
 const deliverySchema = z.object({
@@ -37,6 +39,9 @@ interface DeliveryFormProps {
 export default function DeliveryForm({ serviceType }: DeliveryFormProps) {
   const navigate = useNavigate();
   const showPackageType = serviceType === "send_package";
+
+  const [pickupAddress, setPickupAddress] = useState("");
+  const [dropoffAddress, setDropoffAddress] = useState("");
 
   const {
     register,
@@ -61,6 +66,16 @@ export default function DeliveryForm({ serviceType }: DeliveryFormProps) {
 
   const onSubmit = (data: DeliveryFormData) => mutation.mutate(data);
 
+  const handlePickupChange = (address: string, _lat: number, _lng: number) => {
+    setPickupAddress(address);
+    setValue("pickupAddress", address, { shouldValidate: true });
+  };
+
+  const handleDropoffChange = (address: string, _lat: number, _lng: number) => {
+    setDropoffAddress(address);
+    setValue("dropoffAddress", address, { shouldValidate: true });
+  };
+
   return (
     <motion.form
       initial={{ opacity: 0, height: 0 }}
@@ -71,15 +86,41 @@ export default function DeliveryForm({ serviceType }: DeliveryFormProps) {
     >
       <h3 className="text-sm font-semibold text-primary">Order Details</h3>
 
+      {/* Map picker */}
+      <MapPicker
+        pickupAddress={pickupAddress}
+        dropoffAddress={dropoffAddress}
+        onPickupChange={handlePickupChange}
+        onDropoffChange={handleDropoffChange}
+      />
+
       <div className="space-y-2">
         <Label htmlFor="pickupAddress">Pickup Address</Label>
-        <Input id="pickupAddress" placeholder="Enter pickup address" {...register("pickupAddress")} />
+        <Input
+          id="pickupAddress"
+          placeholder="Enter or click map to set pickup"
+          {...register("pickupAddress")}
+          onChange={(e) => {
+            setPickupAddress(e.target.value);
+            setValue("pickupAddress", e.target.value, { shouldValidate: true });
+          }}
+          value={pickupAddress}
+        />
         {errors.pickupAddress ? <p className="text-xs text-destructive">{errors.pickupAddress.message}</p> : null}
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="dropoffAddress">Drop-off Address</Label>
-        <Input id="dropoffAddress" placeholder="Enter drop-off address" {...register("dropoffAddress")} />
+        <Input
+          id="dropoffAddress"
+          placeholder="Enter or click map to set drop-off"
+          {...register("dropoffAddress")}
+          onChange={(e) => {
+            setDropoffAddress(e.target.value);
+            setValue("dropoffAddress", e.target.value, { shouldValidate: true });
+          }}
+          value={dropoffAddress}
+        />
         {errors.dropoffAddress ? <p className="text-xs text-destructive">{errors.dropoffAddress.message}</p> : null}
       </div>
 

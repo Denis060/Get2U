@@ -18,6 +18,7 @@ import {
 import { Loader2, PlusCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
+import SingleLocationMap from "@/components/SingleLocationMap";
 import type { OrderResponse, VehicleResponse } from "@/types/orders";
 
 const carSchema = z.object({
@@ -46,6 +47,7 @@ export default function CarServiceForm({ serviceType }: CarServiceFormProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showNewVehicle, setShowNewVehicle] = useState(false);
+  const [carLocationValue, setCarLocationValue] = useState("");
 
   const { data: vehicles } = useQuery({
     queryKey: ["vehicles"],
@@ -94,6 +96,11 @@ export default function CarServiceForm({ serviceType }: CarServiceFormProps) {
 
   const onSubmit = (data: CarFormData) => orderMutation.mutate(data);
 
+  const handleLocationChange = (address: string, _lat: number, _lng: number) => {
+    setCarLocationValue(address);
+    setValue("carLocation", address, { shouldValidate: true });
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, height: 0 }}
@@ -104,9 +111,21 @@ export default function CarServiceForm({ serviceType }: CarServiceFormProps) {
       <h3 className="text-sm font-semibold text-primary">Order Details</h3>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {/* Map for car location */}
+        <SingleLocationMap address={carLocationValue} onLocationChange={handleLocationChange} />
+
         <div className="space-y-2">
           <Label htmlFor="carLocation">Car Location</Label>
-          <Input id="carLocation" placeholder="Where is your vehicle?" {...register("carLocation")} />
+          <Input
+            id="carLocation"
+            placeholder="Enter or click map to set location"
+            {...register("carLocation")}
+            onChange={(e) => {
+              setCarLocationValue(e.target.value);
+              setValue("carLocation", e.target.value, { shouldValidate: true });
+            }}
+            value={carLocationValue}
+          />
           {errors.carLocation ? <p className="text-xs text-destructive">{errors.carLocation.message}</p> : null}
         </div>
 

@@ -1,4 +1,4 @@
-# ErrandGo — On-Demand Pickup & Errand Service
+# Get2u Errand — On-Demand Pickup & Errand Service
 
 An on-demand errand service platform connecting customers with trusted agents who handle deliveries, car services, and more.
 
