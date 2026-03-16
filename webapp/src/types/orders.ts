@@ -16,6 +16,9 @@ export type OrderResponse = {
   finalPrice: number | null;
   notes: string | null;
   completionNote: string | null;
+  agentLat: number | null;
+  agentLng: number | null;
+  agentUpdatedAt: string | null;
   createdAt: string;
   updatedAt: string;
   customer?: { id: string; name: string; email: string; image: string | null };

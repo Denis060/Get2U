@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../prisma";
 import { auth } from "../auth";
-import { CreateOrderSchema, UpdateOrderStatusSchema } from "../types";
+import { CreateOrderSchema, UpdateOrderStatusSchema, UpdateAgentLocationSchema } from "../types";
 import {
   notifyAdminNewOrder,
   notifyCustomerOrderAccepted,
@@ -184,6 +184,29 @@ ordersRouter.patch("/:id/accept", async (c) => {
   }
 
   return c.json({ data: updated });
+});
+
+// PATCH /api/orders/:id/location - Agent updates their GPS location for an active order
+ordersRouter.patch("/:id/location", zValidator("json", UpdateAgentLocationSchema), async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+  if (user.role !== "agent") return c.json({ error: { message: "Agents only", code: "FORBIDDEN" } }, 403);
+
+  const orderId = c.req.param("id");
+  const { lat, lng } = c.req.valid("json");
+
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) return c.json({ error: { message: "Order not found", code: "NOT_FOUND" } }, 404);
+  if (order.agentId !== user.id) return c.json({ error: { message: "Forbidden", code: "FORBIDDEN" } }, 403);
+  if (!["accepted", "in_progress"].includes(order.status))
+    return c.json({ error: { message: "Order is not active", code: "BAD_REQUEST" } }, 400);
+
+  const updated = await prisma.order.update({
+    where: { id: orderId },
+    data: { agentLat: lat, agentLng: lng, agentUpdatedAt: new Date() },
+  });
+
+  return c.json({ data: { lat: updated.agentLat, lng: updated.agentLng, updatedAt: updated.agentUpdatedAt } });
 });
 
 export { ordersRouter };

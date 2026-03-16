@@ -94,6 +94,9 @@ export type OrderResponse = {
   finalPrice: number | null;
   notes: string | null;
   completionNote: string | null;
+  agentLat: number | null;
+  agentLng: number | null;
+  agentUpdatedAt: string | null;
   createdAt: string;
   updatedAt: string;
   customer?: { id: string; name: string; email: string; image: string | null };
@@ -117,6 +120,11 @@ export type VehicleResponse = {
   plate: string | null;
   location: string | null;
 };
+
+export const UpdateAgentLocationSchema = z.object({
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+});
 
 export const AdminUpdateRoleSchema = z.object({
   role: UserRole,
