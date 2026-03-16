@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { motion } from "framer-motion";
-import { ChevronRight, Inbox } from "lucide-react";
+import { ChevronRight, Inbox, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/StatusBadge";
+import SkeletonOrderCard from "@/components/SkeletonOrderCard";
 import { getServiceIcon, getServiceLabel, getServiceIconColor } from "@/lib/service-helpers";
+import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { cn } from "@/lib/utils";
 import type { OrderResponse } from "@/types/orders";
 
 const FILTER_TABS = [
@@ -26,11 +29,19 @@ function filterOrders(orders: OrderResponse[], filter: string): OrderResponse[] 
 
 export default function Orders() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [activeFilter, setActiveFilter] = useState("all");
 
-  const { data: orders, isLoading } = useQuery({
+  const { data: orders, isLoading, refetch } = useQuery({
     queryKey: ["orders"],
     queryFn: () => api.get<OrderResponse[]>("/api/orders"),
+  });
+
+  const { containerRef, pullDistance, isRefreshing } = usePullToRefresh({
+    onRefresh: async () => {
+      await refetch();
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+    },
   });
 
   const sorted = [...(orders ?? [])].sort(
@@ -39,33 +50,45 @@ export default function Orders() {
   const filtered = filterOrders(sorted, activeFilter);
 
   return (
-    <div className="space-y-6">
+    <div ref={containerRef} className="space-y-6 overflow-y-auto">
+      {/* Pull to refresh indicator */}
+      {pullDistance > 0 ? (
+        <div
+          className="flex items-center justify-center overflow-hidden transition-all"
+          style={{ height: pullDistance }}
+        >
+          <RefreshCw className={`h-5 w-5 text-primary ${isRefreshing ? "animate-spin" : ""}`} />
+        </div>
+      ) : null}
+
       <div>
         <h1 className="text-2xl font-bold">My Orders</h1>
         <p className="mt-1 text-sm text-muted-foreground">Track and manage your requests</p>
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
         {FILTER_TABS.map((tab) => (
-          <Button
+          <motion.button
             key={tab.key}
-            variant={activeFilter === tab.key ? "default" : "secondary"}
-            size="sm"
+            whileTap={{ scale: 0.93 }}
             onClick={() => setActiveFilter(tab.key)}
-            className="shrink-0"
+            className={cn(
+              "shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all min-h-[36px]",
+              activeFilter === tab.key
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "bg-secondary text-secondary-foreground hover:bg-muted"
+            )}
           >
             {tab.label}
-          </Button>
+          </motion.button>
         ))}
       </div>
 
       {/* Order list */}
       {isLoading ? (
         <div className="space-y-3">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-20 animate-pulse rounded-xl bg-card" />
-          ))}
+          {[1, 2, 3, 4].map((i) => <SkeletonOrderCard key={i} />)}
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-card/50 py-16 text-center">
@@ -93,6 +116,7 @@ export default function Orders() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.04 }}
                 whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.97 }}
                 onClick={() => navigate(`/orders/${order.id}`)}
                 className="flex w-full items-center gap-4 rounded-xl border border-border/40 bg-card p-4 text-left transition-colors hover:bg-secondary"
               >

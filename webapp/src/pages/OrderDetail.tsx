@@ -59,8 +59,16 @@ export default function OrderDetail() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg skeleton-shimmer" />
+          <div className="flex-1 space-y-2">
+            <div className="h-5 w-40 rounded skeleton-shimmer" />
+            <div className="h-3 w-24 rounded skeleton-shimmer" />
+          </div>
+        </div>
+        <div className="h-32 rounded-xl skeleton-shimmer" />
+        <div className="h-48 rounded-xl skeleton-shimmer" />
       </div>
     );
   }

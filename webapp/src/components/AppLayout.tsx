@@ -2,6 +2,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useSession, signOut } from "@/lib/auth-client";
 import FloatingChat from "@/components/FloatingChat";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTheme } from "@/hooks/use-theme";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -11,6 +12,8 @@ import {
   LogOut,
   ArrowLeftRight,
   Tag,
+  Moon,
+  Sun,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -35,6 +38,7 @@ export default function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { theme, toggleTheme } = useTheme();
 
   const user = session?.user;
   const initials = user?.name
@@ -56,7 +60,10 @@ export default function AppLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       {/* Top Navbar */}
-      <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+      <header
+        className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl"
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
+      >
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
           <button
             onClick={() => navigate("/dashboard")}
@@ -87,34 +94,45 @@ export default function AppLayout() {
             </nav>
           ) : null}
 
-          {/* User avatar dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="rounded-full ring-2 ring-transparent transition-all hover:ring-primary/40 focus:outline-none focus:ring-primary/40">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.image ?? undefined} />
-                  <AvatarFallback className="bg-primary/20 text-xs font-semibold text-primary">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={() => navigate("/profile")}>
-                <User className="mr-2 h-4 w-4" />
-                Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/agent")}>
-                <ArrowLeftRight className="mr-2 h-4 w-4" />
-                Switch to Agent
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign Out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-2">
+            {/* Dark mode toggle */}
+            <button
+              onClick={toggleTheme}
+              className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+
+            {/* User avatar dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="rounded-full ring-2 ring-transparent transition-all hover:ring-primary/40 focus:outline-none focus:ring-primary/40">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.image ?? undefined} />
+                    <AvatarFallback className="bg-primary/20 text-xs font-semibold text-primary">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => navigate("/profile")}>
+                  <User className="mr-2 h-4 w-4" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/agent")}>
+                  <ArrowLeftRight className="mr-2 h-4 w-4" />
+                  Switch to Agent
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </header>
 
@@ -138,14 +156,18 @@ export default function AppLayout() {
 
       {/* Mobile Bottom Tabs */}
       {isMobile ? (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-background/95 backdrop-blur-xl">
+        <nav
+          className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-background/95 backdrop-blur-xl"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
           <div className="flex h-16 items-center justify-around">
             {NAV_ITEMS.map((item) => {
               const active = isActive(item.path);
               return (
-                <button
+                <motion.button
                   key={item.path}
                   onClick={() => navigate(item.path)}
+                  whileTap={{ scale: 0.85 }}
                   className={cn(
                     "flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-1 transition-colors",
                     active ? "text-primary" : "text-muted-foreground"
@@ -160,7 +182,7 @@ export default function AppLayout() {
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   ) : null}
-                </button>
+                </motion.button>
               );
             })}
           </div>

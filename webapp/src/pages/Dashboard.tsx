@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Mail, Package, Truck, Car, ChevronRight, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/StatusBadge";
+import SkeletonOrderCard from "@/components/SkeletonOrderCard";
 import { getServiceIcon, getServiceLabel, getServiceIconColor } from "@/lib/service-helpers";
 import type { OrderResponse } from "@/types/orders";
 
@@ -68,6 +69,7 @@ export default function Dashboard() {
               key={action.type}
               variants={fadeUp}
               whileHover={{ y: -4, transition: { duration: 0.2 } }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => navigate(`/new-request?type=${action.type}`)}
               className="group flex flex-col items-center gap-3 rounded-xl border border-border/50 bg-card p-5 text-center transition-colors hover:border-primary/30 hover:bg-secondary"
             >
@@ -98,9 +100,7 @@ export default function Dashboard() {
 
         {isLoading ? (
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-20 animate-pulse rounded-xl bg-card" />
-            ))}
+            {[1, 2, 3].map((i) => <SkeletonOrderCard key={i} />)}
           </div>
         ) : recentOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-card/50 py-12 text-center">
@@ -120,6 +120,7 @@ export default function Dashboard() {
                 <motion.button
                   key={order.id}
                   whileHover={{ x: 4 }}
+                  whileTap={{ scale: 0.97 }}
                   onClick={() => navigate(`/orders/${order.id}`)}
                   className="flex w-full items-center gap-4 rounded-xl border border-border/40 bg-card p-4 text-left transition-colors hover:bg-secondary"
                 >

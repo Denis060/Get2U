@@ -44,34 +44,33 @@
   }
 
   .dark {
-    /* Same as root for now — app is light-only */
-    --background: 0 0% 100%;
-    --foreground: 220 20% 10%;
-    --card: 0 0% 98%;
-    --card-foreground: 220 20% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 10%;
-    --primary: 24 95% 48%;
+    --background: 220 20% 7%;          /* very dark navy */
+    --foreground: 220 15% 95%;         /* near white */
+    --card: 220 18% 10%;               /* dark card */
+    --card-foreground: 220 15% 95%;
+    --popover: 220 18% 10%;
+    --popover-foreground: 220 15% 95%;
+    --primary: 24 95% 52%;             /* slightly brighter orange */
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 220 20% 30%;
-    --muted: 220 14% 94%;
-    --muted-foreground: 220 10% 50%;
+    --secondary: 220 15% 14%;          /* dark secondary */
+    --secondary-foreground: 220 15% 80%;
+    --muted: 220 15% 13%;
+    --muted-foreground: 220 10% 55%;
     --accent: 142 71% 45%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 90%;
-    --input: 220 13% 90%;
-    --ring: 24 95% 48%;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 220 20% 10%;
-    --sidebar-primary: 24 95% 48%;
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 24 95% 52%;
+    --sidebar-background: 220 18% 8%;
+    --sidebar-foreground: 220 15% 95%;
+    --sidebar-primary: 24 95% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 94%;
-    --sidebar-accent-foreground: 220 20% 30%;
-    --sidebar-border: 220 13% 90%;
-    --sidebar-ring: 24 95% 48%;
+    --sidebar-accent: 220 15% 14%;
+    --sidebar-accent-foreground: 220 15% 80%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 24 95% 52%;
   }
 }
 
@@ -95,4 +94,33 @@
   ::-webkit-scrollbar-track { background: hsl(var(--secondary)); }
   ::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary) / 0.5); }
+}
+
+/* Safe area insets for notch/home indicator */
+.safe-top { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 1rem); }
+
+/* Native-feeling touch interactions */
+* { -webkit-tap-highlight-color: transparent; }
+button, [role="button"] { touch-action: manipulation; }
+
+/* Skeleton shimmer animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--secondary)) 50%, hsl(var(--muted)) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Hide scrollbar utility */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
