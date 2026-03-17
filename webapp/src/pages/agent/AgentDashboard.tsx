@@ -66,7 +66,7 @@ export default function AgentDashboard() {
   const { data: availableOrders, isLoading: loadingAvailable } = useQuery({
     queryKey: ["agent-available-orders"],
     queryFn: () => api.get<OrderResponse[]>("/api/orders?status=pending"),
-    refetchInterval: 30000,
+    refetchInterval: 8000,
   });
 
   // Fetch agent's own orders
@@ -164,7 +164,13 @@ export default function AgentDashboard() {
 
       {/* Available Jobs */}
       <section className={cn(isMobile ? "px-4" : "")}>
-        <h2 className="mb-4 text-lg font-semibold">Available Jobs</h2>
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-lg font-semibold">Available Jobs</h2>
+          <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 border border-emerald-500/20">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Live
+          </span>
+        </div>
 
         {loadingAvailable ? (
           <div className="space-y-3">
@@ -223,9 +229,12 @@ export default function AgentDashboard() {
                       </div>
 
                       {order.customer ? (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {order.customer.name}
-                        </p>
+                        <div className="mt-1">
+                          <p className="text-xs text-muted-foreground">
+                            {order.customer.name}
+                          </p>
+                          {order.customer.phone ? <p className="text-xs text-muted-foreground/60">{order.customer.phone}</p> : null}
+                        </div>
                       ) : null}
 
                       <div className="mt-2 space-y-1">

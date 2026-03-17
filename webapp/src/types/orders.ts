@@ -21,7 +21,7 @@ export type OrderResponse = {
   agentUpdatedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  customer?: { id: string; name: string; email: string; image: string | null };
+  customer?: { id: string; name: string; email: string; image: string | null; phone?: string | null };
   agent?: { id: string; name: string; email: string; image: string | null } | null;
   vehicle?: { id: string; make: string; model: string; year: string | null; color: string | null; plate: string | null } | null;
 };

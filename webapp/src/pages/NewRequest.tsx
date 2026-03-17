@@ -11,13 +11,16 @@ import {
   HelpCircle,
   ChevronLeft,
   ChevronRight,
+  CheckCircle2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { OrderResponse } from "@/types/orders";
+import { SERVICE_TYPES, type ServiceType } from "@/types/orders";
 import StepIndicator from "@/components/StepIndicator";
 import DeliveryRequestForm from "@/components/forms/DeliveryRequestForm";
 import CarRequestForm from "@/components/forms/CarRequestForm";
 import ReviewSubmit from "@/components/forms/ReviewSubmit";
+import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +55,7 @@ export default function NewRequest() {
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittedOrder, setSubmittedOrder] = useState<OrderResponse | null>(null);
 
   useEffect(() => {
     const preselect = searchParams.get("type");
@@ -88,7 +92,7 @@ export default function NewRequest() {
         ...formData,
       };
       const order = await api.post<OrderResponse>("/api/orders", payload);
-      navigate(`/orders/${order.id}`);
+      setSubmittedOrder(order);
     } catch (err) {
       console.error("Failed to submit order", err);
       setIsSubmitting(false);
@@ -97,6 +101,96 @@ export default function NewRequest() {
 
   const isDelivery = selectedService ? DELIVERY_TYPES.has(selectedService) : false;
   const px = isMobile ? "px-4" : "";
+
+  // Success screen
+  if (submittedOrder !== null) {
+    const serviceInfo = SERVICE_TYPES[submittedOrder.serviceType as ServiceType];
+    const serviceLabel = serviceInfo ? serviceInfo.label : submittedOrder.serviceType;
+    return (
+      <div className={cn("flex min-h-[80vh] flex-col items-center justify-center pb-10", isMobile ? "px-6" : "mx-auto max-w-lg px-6")}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", stiffness: 260, damping: 22 }}
+          className="flex flex-col items-center text-center"
+        >
+          {/* Animated checkmark */}
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.1 }}
+            className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-emerald-500/15 ring-4 ring-emerald-500/20"
+          >
+            <CheckCircle2 className="h-12 w-12 text-emerald-400" strokeWidth={1.5} />
+          </motion.div>
+
+          {/* Headline */}
+          <motion.h1
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="text-2xl font-bold text-foreground"
+          >
+            Request Submitted!
+          </motion.h1>
+
+          {/* Subtitle */}
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="mt-2 text-sm text-muted-foreground"
+          >
+            Your request has been received. An agent will be assigned shortly.
+          </motion.p>
+
+          {/* Order details card */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45 }}
+            className="mt-8 w-full rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-6 py-5"
+          >
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Order ID</span>
+                <span className="font-mono text-sm font-bold text-emerald-400">
+                  #{submittedOrder.id.slice(-8).toUpperCase()}
+                </span>
+              </div>
+              <div className="h-px bg-border/40" />
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Service</span>
+                <span className="text-sm font-semibold text-foreground">{serviceLabel}</span>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Action buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55 }}
+            className="mt-6 flex w-full flex-col gap-3"
+          >
+            <Button
+              className="w-full bg-emerald-500 text-white hover:bg-emerald-400"
+              onClick={() => navigate(`/orders/${submittedOrder.id}`)}
+            >
+              View My Order
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => navigate("/dashboard")}
+            >
+              Go to Home
+            </Button>
+          </motion.div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn("pb-10", isMobile ? "" : "mx-auto max-w-lg")}>
