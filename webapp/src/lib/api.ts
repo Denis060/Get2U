@@ -19,6 +19,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     ...options,
     headers: {
       "Content-Type": "application/json",
+      "Bypass-Tunnel-Reminder": "true",
       ...options.headers,
     },
     credentials: "include",
@@ -58,6 +59,7 @@ async function rawRequest(endpoint: string, options: RequestInit = {}): Promise<
   const config: RequestInit = {
     ...options,
     headers: {
+      "Bypass-Tunnel-Reminder": "true",
       ...options.headers,
     },
     credentials: "include",

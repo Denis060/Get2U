@@ -1,4 +1,7 @@
 import { z } from "zod";
+import * as dotenv from "dotenv";
+
+dotenv.config();
 
 /**
  * Environment variable schema using Zod
@@ -11,6 +14,7 @@ const envSchema = z.object({
   BACKEND_URL: z.string().optional(),
   DATABASE_URL: z.string().default("file:./dev.db"),
   BETTER_AUTH_SECRET: z.string().min(1, "BETTER_AUTH_SECRET is required"),
+  RESEND_API_KEY: z.string().min(1, "RESEND_API_KEY is required"),
   ADMIN_EMAIL: z.preprocess((v) => (v === "" ? undefined : v), z.string().email().optional()),
 });
 

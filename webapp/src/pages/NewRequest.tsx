@@ -23,6 +23,8 @@ import ReviewSubmit from "@/components/forms/ReviewSubmit";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import SubscriptionGuard from "@/components/SubscriptionGuard";
 
 const DELIVERY_SERVICES = [
   { type: "send_mail", label: "Send Mail", desc: "Letters, documents & envelopes", icon: Mail, bg: "bg-amber-500/15", iconColor: "text-amber-500" },
@@ -93,8 +95,11 @@ export default function NewRequest() {
       };
       const order = await api.post<OrderResponse>("/api/orders", payload);
       setSubmittedOrder(order);
-    } catch (err) {
+      toast.success("Order submitted successfully!");
+    } catch (err: any) {
       console.error("Failed to submit order", err);
+      const message = err.response?.data?.error?.message || "Failed to submit order. Please try again.";
+      toast.error(message);
       setIsSubmitting(false);
     }
   };
@@ -194,77 +199,79 @@ export default function NewRequest() {
 
   return (
     <div className={cn("pb-10", isMobile ? "" : "mx-auto max-w-lg")}>
-      {/* Native-style page header */}
-      <div className={cn("flex items-center gap-3 py-4", px)}>
-        {step > 1 ? (
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.9 }}
-            onClick={() => goTo((step - 1) as 1 | 2 | 3, -1)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-foreground"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </motion.button>
-        ) : (
+      <SubscriptionGuard>
+        {/* Native-style page header */}
+        <div className={cn("flex items-center gap-3 py-4", px)}>
+          {step > 1 ? (
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.9 }}
+              onClick={() => goTo((step - 1) as 1 | 2 | 3, -1)}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-foreground"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </motion.button>
+          ) : (
+            <div className="h-9 w-9" />
+          )}
+          <div className="flex-1 text-center">
+            <h1 className="text-base font-bold text-foreground">New Request</h1>
+            <p className="text-xs text-muted-foreground">
+              Step {step} of 3
+            </p>
+          </div>
           <div className="h-9 w-9" />
-        )}
-        <div className="flex-1 text-center">
-          <h1 className="text-base font-bold text-foreground">New Request</h1>
-          <p className="text-xs text-muted-foreground">
-            Step {step} of 3
-          </p>
         </div>
-        <div className="h-9 w-9" />
-      </div>
 
-      {/* Step indicator */}
-      <div className={cn("mb-5", px)}>
-        <StepIndicator currentStep={step} steps={STEP_LABELS} />
-      </div>
+        {/* Step indicator */}
+        <div className={cn("mb-5", px)}>
+          <StepIndicator currentStep={step} steps={STEP_LABELS} />
+        </div>
 
-      {/* Animated step content */}
-      <div className={cn("overflow-hidden", px)}>
-        <AnimatePresence mode="wait" custom={direction}>
-          <motion.div
-            key={step}
-            custom={direction}
-            variants={slideVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          >
-            {step === 1 ? (
-              <div className="space-y-5">
-                <ServiceSection title="Delivery Services" services={DELIVERY_SERVICES} onSelect={handleServiceSelect} />
-                <ServiceSection title="Car Services" services={CAR_SERVICES} onSelect={handleServiceSelect} />
-              </div>
-            ) : step === 2 && selectedService ? (
-              isDelivery ? (
-                <DeliveryRequestForm
+        {/* Animated step content */}
+        <div className={cn("overflow-hidden", px)}>
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.div
+              key={step}
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            >
+              {step === 1 ? (
+                <div className="space-y-5">
+                  <ServiceSection title="Delivery Services" services={DELIVERY_SERVICES} onSelect={handleServiceSelect} />
+                  <ServiceSection title="Car Services" services={CAR_SERVICES} onSelect={handleServiceSelect} />
+                </div>
+              ) : step === 2 && selectedService ? (
+                isDelivery ? (
+                  <DeliveryRequestForm
+                    serviceType={selectedService}
+                    onComplete={handleFormComplete}
+                    initialData={formData as Parameters<typeof DeliveryRequestForm>[0]["initialData"]}
+                  />
+                ) : (
+                  <CarRequestForm
+                    serviceType={selectedService}
+                    onComplete={handleFormComplete}
+                    initialData={formData as Parameters<typeof CarRequestForm>[0]["initialData"]}
+                  />
+                )
+              ) : step === 3 && selectedService ? (
+                <ReviewSubmit
                   serviceType={selectedService}
-                  onComplete={handleFormComplete}
-                  initialData={formData as Parameters<typeof DeliveryRequestForm>[0]["initialData"]}
+                  formData={formData}
+                  onEdit={() => goTo(2, -1)}
+                  onSubmit={handleFinalSubmit}
+                  isSubmitting={isSubmitting}
                 />
-              ) : (
-                <CarRequestForm
-                  serviceType={selectedService}
-                  onComplete={handleFormComplete}
-                  initialData={formData as Parameters<typeof CarRequestForm>[0]["initialData"]}
-                />
-              )
-            ) : step === 3 && selectedService ? (
-              <ReviewSubmit
-                serviceType={selectedService}
-                formData={formData}
-                onEdit={() => goTo(2, -1)}
-                onSubmit={handleFinalSubmit}
-                isSubmitting={isSubmitting}
-              />
-            ) : null}
-          </motion.div>
-        </AnimatePresence>
-      </div>
+              ) : null}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </SubscriptionGuard>
     </div>
   );
 }

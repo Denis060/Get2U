@@ -71,7 +71,7 @@ export default {
       },
       fontFamily: {
         sans: ['"DM Sans"', "system-ui", "sans-serif"],
-        syne: ["Syne", "sans-serif"],
+        bricolage: ['"Bricolage Grotesque"', "sans-serif"],
       },
       keyframes: {
         "accordion-down": {

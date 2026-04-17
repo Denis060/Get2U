@@ -15,6 +15,37 @@ import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+
+type Plan = {
+  id: string;
+  name: string;
+  category: "delivery" | "car";
+  price: number;
+  interval: string;
+  features: string[];
+  isPopular: boolean;
+  stripePriceId?: string;
+};
+
+type BusinessTier = {
+  id: string;
+  plan: string;
+  volume: string;
+  price: number;
+  interval: string;
+};
+
+type ServiceFee = {
+  id: string;
+  name: string;
+  description?: string;
+  baseFee: number;
+  serviceType?: string;
+};
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
@@ -120,6 +151,36 @@ export default function Pricing() {
   const isMobile = useIsMobile();
   const px = isMobile ? "px-4" : "";
 
+  const { data: config, isLoading } = useQuery({
+    queryKey: ["public-pricing"],
+    queryFn: () => api.get<{ plans: Plan[]; businessTiers: BusinessTier[]; serviceFees: ServiceFee[] }>("/api/config/pricing"),
+  });
+
+  const subscribeMutation = useMutation({
+    mutationFn: (planId: string) => api.post<{ url: string }>("/api/payments/create-checkout-session", { planId }),
+    onSuccess: (data) => {
+      if (data.url) window.location.href = data.url;
+    },
+    onError: (err: any) => {
+      if (err.status === 401) {
+        toast.error("Please log in to subscribe or request service.");
+      } else {
+        toast.error(err.message || "Failed to start checkout. Please try again.");
+      }
+    }
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center pt-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const deliveryPlans = config?.plans.filter(p => p.category === "delivery") || [];
+  const carPlans = config?.plans.filter(p => p.category === "car") || [];
+
   return (
     <div className="space-y-0 pb-6">
       {/* Page header */}
@@ -134,193 +195,191 @@ export default function Pricing() {
           Mail & Package Delivery
         </p>
         <div className={cn("space-y-3", isMobile ? "" : "grid grid-cols-2 gap-4 space-y-0")}>
-          {/* Individual Plan */}
-          <motion.div
-            variants={fadeUp}
-            initial="hidden"
-            animate="show"
-            className="relative overflow-hidden rounded-2xl border border-amber-500/40 bg-card p-5 shadow-sm"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent" />
-            <div className="relative">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/15">
-                    <Mail className="h-4 w-4 text-amber-400" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-amber-500">Most Popular</span>
-                      <Star className="h-3 w-3 text-amber-400" />
+          {deliveryPlans.map((plan, i) => (
+            <motion.div
+              key={plan.id}
+              variants={fadeUp}
+              initial="hidden"
+              animate="show"
+              transition={{ delay: i * 0.1 }}
+              className={cn(
+                "relative overflow-hidden rounded-2xl border bg-card p-5 shadow-sm",
+                plan.isPopular ? "border-amber-500/40" : "border-border/60"
+              )}
+            >
+              {plan.isPopular && <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent" />}
+              <div className="relative">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl", plan.isPopular ? "bg-amber-500/15" : "bg-secondary")}>
+                      <Mail className={cn("h-4 w-4", plan.isPopular ? "text-amber-400" : "text-muted-foreground")} />
                     </div>
-                    <p className="text-base font-bold text-foreground">Individual</p>
+                    <div>
+                      {plan.isPopular && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-amber-500">Most Popular</span>
+                          <Star className="h-3 w-3 text-amber-400" />
+                        </div>
+                      )}
+                      <p className="text-base font-bold text-foreground">{plan.name}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-2xl font-bold text-foreground">${plan.price}</span>
+                    <span className="text-xs text-muted-foreground">/{plan.interval === "month" ? "mo" : "yr"}</span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-2xl font-bold text-foreground">$99.99</span>
-                  <span className="text-xs text-muted-foreground">/mo</span>
-                </div>
+                <ul className="mb-4 space-y-2">
+                  {plan.features.map((f) => (
+                    <FeatureItem key={f} text={f} />
+                  ))}
+                </ul>
+                <Button 
+                   onClick={() => subscribeMutation.mutate(plan.id)}
+                   disabled={subscribeMutation.isPending}
+                   className={cn("h-12 w-full rounded-xl font-semibold", plan.isPopular ? "bg-amber-500 text-amber-950 hover:bg-amber-400" : "")}
+                >
+                  {subscribeMutation.isPending && subscribeMutation.variables === plan.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Subscribe Now
+                </Button>
               </div>
-              <ul className="mb-4 space-y-2">
-                {DELIVERY_INDIVIDUAL_FEATURES.map((f) => (
-                  <FeatureItem key={f} text={f} />
-                ))}
-              </ul>
-              <Button className="h-12 w-full rounded-xl bg-amber-500 text-amber-950 font-semibold hover:bg-amber-400">
-                Get Started
-              </Button>
-            </div>
-          </motion.div>
+            </motion.div>
+          ))}
 
-          {/* Business Plan */}
-          <motion.div
-            variants={fadeUp}
-            initial="hidden"
-            animate="show"
-            transition={{ delay: 0.1 }}
-            className="overflow-hidden rounded-2xl border border-border/60 bg-card p-5 shadow-sm"
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
+          {/* Business Tiers (if any) */}
+          {config?.businessTiers && config.businessTiers.length > 0 && (
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              animate="show"
+              transition={{ delay: 0.2 }}
+              className="overflow-hidden rounded-2xl border border-border/60 bg-card p-5 shadow-sm"
+            >
+              <div className="mb-3 flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary">
                   <Package className="h-4 w-4 text-muted-foreground" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-primary">Business</span>
-                    <Zap className="h-3 w-3 text-primary" />
-                  </div>
-                  <p className="text-base font-bold text-foreground">Business</p>
-                </div>
+                <p className="text-base font-bold text-foreground">Business Tiers</p>
               </div>
-            </div>
-
-            {/* Tiered table */}
-            <div className="mb-4 overflow-hidden rounded-xl border border-border/40 bg-secondary/50">
-              {BUSINESS_TIERS.map((tier, i) => (
-                <div
-                  key={tier.plan}
-                  className={cn(
-                    "flex items-center justify-between px-3 py-2.5 text-sm",
-                    i < BUSINESS_TIERS.length - 1 ? "border-b border-border/30" : ""
-                  )}
-                >
-                  <span className="font-semibold text-foreground">{tier.plan}</span>
-                  <span className="text-xs text-muted-foreground">{tier.volume}</span>
-                  <span className="font-bold text-primary">{tier.price}</span>
-                </div>
-              ))}
-            </div>
-
-            <ul className="mb-4 space-y-2">
-              {DELIVERY_BUSINESS_FEATURES.map((f) => (
-                <FeatureItem key={f} text={f} />
-              ))}
-            </ul>
-            <Button variant="outline" className="h-12 w-full rounded-xl font-semibold">
-              Contact Sales
-            </Button>
-          </motion.div>
+              <div className="mb-4 overflow-hidden rounded-xl border border-border/40 bg-secondary/50">
+                {config.businessTiers.map((tier, i) => (
+                  <div key={tier.id} className={cn("flex items-center justify-between px-3 py-2.5 text-sm", i < config.businessTiers.length - 1 ? "border-b border-border/30" : "")}>
+                    <span className="font-semibold text-foreground">{tier.plan}</span>
+                    <span className="text-xs text-muted-foreground">{tier.volume}</span>
+                    <span className="font-bold text-primary">${tier.price}</span>
+                  </div>
+                ))}
+              </div>
+              <Button variant="outline" className="h-12 w-full rounded-xl font-semibold">Contact Sales</Button>
+            </motion.div>
+          )}
         </div>
       </div>
 
       {/* Car Concierge */}
-      <div className={cn("mb-2 mt-6", px)}>
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-          Car Concierge Services
-        </p>
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.45 }}
-          className="relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-card p-5 shadow-sm"
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent" />
-          <div className="relative">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15">
-                  <Car className="h-4 w-4 text-emerald-400" />
+      {carPlans.length > 0 && (
+        <div className={cn("mb-2 mt-6", px)}>
+          <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Car Concierge Services
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {carPlans.map((plan) => (
+              <motion.div
+                key={plan.id}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.45 }}
+                className="relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-card p-5 shadow-sm"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent" />
+                <div className="relative">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15">
+                        <Car className="h-4 w-4 text-emerald-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-emerald-500">{plan.name}</p>
+                        <p className="text-base font-bold text-foreground">Service Access</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-2xl font-bold text-foreground">${plan.price}</span>
+                      <span className="text-xs text-muted-foreground">/{plan.interval === "month" ? "mo" : "yr"}</span>
+                    </div>
+                  </div>
+                  <ul className="mb-4 space-y-2">
+                    {plan.features.map((f) => (
+                      <FeatureItem key={f} text={f} />
+                    ))}
+                  </ul>
+                  <Button 
+                    onClick={() => subscribeMutation.mutate(plan.id)}
+                    disabled={subscribeMutation.isPending}
+                    className="h-12 w-full rounded-xl bg-emerald-600 font-semibold text-white hover:bg-emerald-500"
+                  >
+                    {subscribeMutation.isPending && subscribeMutation.variables === plan.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Subscribe Now
+                  </Button>
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-emerald-500">Car Concierge</p>
-                  <p className="text-base font-bold text-foreground">All Car Services</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-2xl font-bold text-foreground">$89.99</span>
-                <span className="text-xs text-muted-foreground">/mo</span>
-              </div>
-            </div>
-            <ul className="mb-4 space-y-2">
-              {CAR_FEATURES.map((f) => (
-                <FeatureItem key={f} text={f} />
-              ))}
-            </ul>
-            <Button className="h-12 w-full rounded-xl bg-emerald-600 font-semibold text-white hover:bg-emerald-500">
-              Subscribe Now
-            </Button>
+              </motion.div>
+            ))}
           </div>
-        </motion.div>
-      </div>
+        </div>
+      )}
 
       {/* Package Pickup Pay-as-you-go */}
-      <div className={cn("mb-2 mt-6", px)}>
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-          Pay As You Go
-        </p>
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.45 }}
-          className="relative overflow-hidden rounded-2xl border border-border/50 bg-secondary p-5"
-        >
-          <div className="mb-3 flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
-              <Truck className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-primary">No subscription needed</p>
-              <p className="text-base font-bold text-foreground">Package Pickup & Courier</p>
-            </div>
-          </div>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Only pay when you ship. We add a flat{" "}
-            <span className="font-semibold text-foreground">$5.00</span>{" "}
-            service fee on top of the courier's standard charge.
+      {config?.serviceFees.map((fee) => (
+        <div key={fee.id} className={cn("mb-2 mt-6", px)}>
+          <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            {fee.name}
           </p>
-
-          {/* Price breakdown */}
-          <div className="mb-4 overflow-hidden rounded-xl border border-border/50 bg-background/60">
-            <div className="border-b border-border/40 px-3 py-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Example Breakdown</p>
-            </div>
-            <div className="divide-y divide-border/40">
-              <div className="flex items-center justify-between px-3 py-2.5">
-                <span className="text-sm text-muted-foreground">Courier base charge</span>
-                <span className="text-sm font-medium text-muted-foreground">varies</span>
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.45 }}
+            className="relative overflow-hidden rounded-2xl border border-border/50 bg-secondary p-5"
+          >
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+                <Truck className="h-4 w-4 text-primary" />
               </div>
-              <div className="flex items-center justify-between px-3 py-2.5">
-                <span className="text-sm text-muted-foreground">Get2u service fee</span>
-                <span className="text-sm font-bold text-primary">$5.00</span>
-              </div>
-              <div className="flex items-center justify-between bg-secondary/60 px-3 py-2.5">
-                <span className="text-sm font-semibold">Total</span>
-                <span className="text-sm font-bold">Courier + $5.00</span>
+              <div>
+                <p className="text-xs font-bold text-primary">No subscription needed</p>
+                <p className="text-base font-bold text-foreground">{fee.name}</p>
               </div>
             </div>
-          </div>
+            <p className="mb-4 text-sm text-muted-foreground">
+              {fee.description || `Flat service fee for ${fee.name}.`}
+            </p>
 
-          <Link to="/new-request?type=pickup_dropoff">
-            <Button size="lg" className="h-12 w-full rounded-xl gap-2 font-semibold">
-              <Truck className="h-4 w-4" />
-              Request a Pickup
-            </Button>
-          </Link>
-        </motion.div>
-      </div>
+            {/* Price breakdown */}
+            <div className="mb-4 overflow-hidden rounded-xl border border-border/50 bg-background/60">
+              <div className="border-b border-border/40 px-3 py-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Price Example</p>
+              </div>
+              <div className="divide-y divide-border/40">
+                <div className="flex items-center justify-between px-3 py-2.5">
+                  <span className="text-sm text-muted-foreground">Service Fee</span>
+                  <span className="text-sm font-bold text-primary">${fee.baseFee}</span>
+                </div>
+                <div className="flex items-center justify-between bg-secondary/60 px-3 py-2.5">
+                  <span className="text-sm font-semibold italic text-muted-foreground text-xs">+ Additional courier/product costs</span>
+                </div>
+              </div>
+            </div>
+
+            <Link to="/new-request">
+              <Button size="lg" className="h-12 w-full rounded-xl gap-2 font-semibold">
+                <Truck className="h-4 w-4" />
+                Request Service
+              </Button>
+            </Link>
+          </motion.div>
+        </div>
+      ))}
 
       {/* FAQ */}
       <div className={cn("mt-6", px)}>

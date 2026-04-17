@@ -30,13 +30,15 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-function getCategoryLabel(serviceType: string): string {
+function getCategoryLabel(serviceType: string | undefined | null): string {
+  if (!serviceType) return "Unknown";
   const info = SERVICE_TYPES[serviceType as ServiceType];
   if (!info) return "Other";
   return info.category === "car" ? "Car Service" : "Delivery";
 }
 
-function getCategoryColor(serviceType: string): string {
+function getCategoryColor(serviceType: string | undefined | null): string {
+  if (!serviceType) return "bg-muted text-muted-foreground";
   const info = SERVICE_TYPES[serviceType as ServiceType];
   if (!info) return "bg-muted text-muted-foreground";
   return info.category === "car"
@@ -62,10 +64,22 @@ export default function AgentDashboard() {
   const isMobile = useIsMobile();
   const firstName = session?.user?.name?.split(" ")[0] ?? "Agent";
 
-  // Fetch available (pending) orders
+  // Fetch full profile for verification status
+  const { data: profileResponse, isLoading: loadingProfile } = useQuery({
+    queryKey: ["me"],
+    queryFn: () => api.get<any>("/api/me"),
+  });
+
+  const profile = profileResponse?.data;
+  const agentProfile = profile?.agentProfile;
+
+  // Fetch available (pending) orders (only if approved)
+  const isApproved = agentProfile?.applicationStatus === "approved";
+
   const { data: availableOrders, isLoading: loadingAvailable } = useQuery({
     queryKey: ["agent-available-orders"],
     queryFn: () => api.get<OrderResponse[]>("/api/orders?status=pending"),
+    enabled: isApproved,
     refetchInterval: 8000,
   });
 
@@ -73,6 +87,7 @@ export default function AgentDashboard() {
   const { data: myOrders } = useQuery({
     queryKey: ["agent-my-orders"],
     queryFn: () => api.get<OrderResponse[]>("/api/orders?role=agent"),
+    enabled: isApproved,
   });
 
   const activeJobs = myOrders?.filter(
@@ -95,14 +110,83 @@ export default function AgentDashboard() {
       queryClient.invalidateQueries({ queryKey: ["agent-my-orders"] });
       toast({ title: "Job accepted!", description: "You can now start working on this job." });
     },
-    onError: () => {
+    onError: (err: any) => {
       toast({
         title: "Failed to accept job",
-        description: "This job may have already been taken.",
+        description: err.message || "This job may have already been taken.",
         variant: "destructive",
       });
     },
   });
+
+  if (loadingProfile) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Handle different application statuses
+  if (!agentProfile || agentProfile.applicationStatus === "not_applied") {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+        <div className="mb-6 rounded-full bg-orange-500/10 p-5 text-orange-500">
+          <ClipboardCheck className="h-12 w-16" />
+        </div>
+        <h1 className="text-2xl font-bold mb-3">Vetting Required</h1>
+        <p className="max-w-md text-muted-foreground mb-8">
+          To start working as an agent on Get2U, you must first complete our formal vetting process.
+        </p>
+        <Button onClick={() => navigate("/agent/apply")} className="w-full max-w-xs h-12 text-md">
+          Start Application
+        </Button>
+      </div>
+    );
+  }
+
+  if (agentProfile.applicationStatus === "pending") {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+        <div className="mb-6 rounded-full bg-orange-500/10 p-5 text-orange-500">
+          <Clock className="h-12 w-16 animate-pulse" />
+        </div>
+        <h1 className="text-2xl font-bold mb-3">Verification in Progress</h1>
+        <p className="max-w-md text-muted-foreground mb-4">
+          Our administrative team is currently reviewing your application and documentation.
+        </p>
+        <div className="rounded-xl bg-orange-500/5 border border-orange-500/20 p-4 text-sm text-orange-200">
+           Review typically takes 24-48 hours. You will be notified via email once approved.
+        </div>
+        <Button variant="outline" onClick={() => navigate("/dashboard")} className="mt-8">
+          Return to Customer Dashboard
+        </Button>
+      </div>
+    );
+  }
+
+  if (agentProfile.applicationStatus === "rejected") {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+        <div className="mb-6 rounded-full bg-red-500/10 p-5 text-red-500">
+          <AlertCircle className="h-12 w-16" />
+        </div>
+        <h1 className="text-2xl font-bold mb-3">Application Update</h1>
+        <p className="max-w-md text-muted-foreground mb-4">
+          Unfortunately, your agent application was not approved at this time.
+        </p>
+        {agentProfile.rejectionReason && (
+          <div className="w-full max-w-md mb-8 rounded-xl bg-red-500/5 border border-red-500/20 p-4 text-left">
+            <p className="text-xs font-bold uppercase tracking-wider mb-2 text-red-400">Reason for rejection:</p>
+            <p className="italic text-red-100">{agentProfile.rejectionReason}</p>
+          </div>
+        )}
+        <Button onClick={() => navigate("/agent/apply")} className="w-full max-w-xs h-12 text-md">
+          Revise & Re-apply
+        </Button>
+      </div>
+    );
+  }
 
   const pending = availableOrders ?? [];
 

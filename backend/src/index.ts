@@ -1,4 +1,3 @@
-import "@vibecodeapp/proxy"; // DO NOT REMOVE OTHERWISE VIBECODE PROXY WILL NOT WORK
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import "./env";
@@ -9,6 +8,8 @@ import { vehiclesRouter } from "./routes/vehicles";
 import { usersRouter } from "./routes/users";
 import { messagesRouter } from "./routes/messages";
 import { adminRouter } from "./routes/admin";
+import { configRouter } from "./routes/config";
+import { paymentsRouter } from "./routes/payments";
 
 const app = new Hono<{
   Variables: {
@@ -26,6 +27,10 @@ const allowed = [
   /^https:\/\/[a-z0-9-]+\.vibecodeapp\.com$/,
   /^https:\/\/[a-z0-9-]+\.vibecode\.dev$/,
   /^https:\/\/vibecode\.dev$/,
+  /^https:\/\/[a-z0-9-]+\.loca\.lt$/,
+  /^https:\/\/[a-z0-9-]+\.vercel\.app$/,
+  /^https:\/\/get2uerrand\.com$/,
+  /^https:\/\/www\.get2uerrand\.com$/,
 ];
 
 app.use(
@@ -65,8 +70,20 @@ app.route("/api/vehicles", vehiclesRouter);
 app.route("/api", usersRouter);
 app.route("/api/orders/:orderId/messages", messagesRouter);
 app.route("/api/admin", adminRouter);
+import { serve } from "@hono/node-server";
+
+app.route("/api/config", configRouter);
+app.route("/api/payments", paymentsRouter);
 
 const port = Number(process.env.PORT) || 3000;
+
+if (process.env.NODE_ENV !== "test") {
+  console.log(`Server is running on port ${port}`);
+  serve({
+    fetch: app.fetch,
+    port
+  });
+}
 
 export default {
   port,

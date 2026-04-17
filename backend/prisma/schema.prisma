@@ -3,30 +3,45 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-// Auth models (required by Better Auth)
 model User {
-  id            String    @id
-  name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  image         String?
-  role          String    @default("customer") // customer, agent, admin
-  phone         String?
-  address       String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  sessions      Session[]
-  accounts      Account[]
-  // App-specific
-  ordersAsCustomer Order[]   @relation("CustomerOrders")
-  ordersAsAgent    Order[]   @relation("AgentOrders")
-  vehicles         Vehicle[]
-  agentProfile     AgentProfile?
-  sentMessages     Message[]  @relation("SentMessages")
+  id                   String            @id
+  name                 String
+  email                String            @unique
+  emailVerified        Boolean           @default(false)
+  image                String?
+  role                 String            @default("customer")
+  phone                String?
+  address              String?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  subscriptionPlanId   String?
+  adminRole            String?
+  accounts             Account[]
+  agentProfile         AgentProfile?
+  sentMessages         Message[]         @relation("SentMessages")
+  ordersAsAgent        Order[]           @relation("AgentOrders")
+  ordersAsCustomer     Order[]           @relation("CustomerOrders")
+  sessions             Session[]
+  subscriptionPlan     SubscriptionPlan? @relation(fields: [subscriptionPlanId], references: [id])
+  vehicles             Vehicle[]
+}
+
+model Announcement {
+  id        String    @id @default(cuid())
+  title     String
+  content   String
+  target    String    @default("all")
+  active    Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model Session {
@@ -46,7 +61,6 @@ model Account {
   accountId             String
   providerId            String
   userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
   refreshToken          String?
   idToken               String?
@@ -56,6 +70,7 @@ model Account {
   password              String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Verification {
@@ -67,84 +82,130 @@ model Verification {
   updatedAt  DateTime @updatedAt
 }
 
-// App models
 model AgentProfile {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  idNumber    String?
-  idVerified  Boolean  @default(false)
-  approved    Boolean  @default(false)
-  rating      Float    @default(0)
-  totalJobs   Int      @default(0)
-  earnings    Float    @default(0)
-  available   Boolean  @default(true)
-  bio         String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  rating            Float    @default(0)
+  totalJobs         Int      @default(0)
+  earnings          Float    @default(0)
+  available         Boolean  @default(true)
+  bio               String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  applicationStatus String   @default("not_applied")
+  idImageUrl        String?
+  licenseImageUrl   String?
+  rejectionReason   String?
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Vehicle {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  make      String
-  model     String
-  year      String?
-  color     String?
-  plate     String?
-  location  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  orders    Order[]
+  id                   String   @id @default(cuid())
+  userId               String
+  make                 String
+  model                String
+  year                 String?
+  color                String?
+  plate                String?
+  location             String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  carImageUrl          String?
+  insuranceImageUrl    String?
+  isVerified           Boolean  @default(false)
+  registrationImageUrl String?
+  orders               Order[]
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Order {
-  id             String   @id @default(cuid())
+  id             String            @id @default(cuid())
   customerId     String
-  customer       User     @relation("CustomerOrders", fields: [customerId], references: [id])
   agentId        String?
-  agent          User?    @relation("AgentOrders", fields: [agentId], references: [id])
-
-  // Service info
-  category       String   // delivery, car_service
-  serviceType    String   // send_mail, send_package, pickup_dropoff, car_wash, fueling, oil_change, vehicle_help
-  status         String   @default("pending") // pending, accepted, in_progress, completed, cancelled
-
-  // Delivery fields
+  category       String
+  serviceType    String
+  status         String            @default("pending")
   pickupAddress  String?
   dropoffAddress String?
-  packageType    String?  // letter, small_package, large_package
-  courierService String?  // dhl, fedex, ups, usps, local
-
-  // Car service fields
+  packageType    String?
+  courierService String?
   vehicleId      String?
-  vehicle        Vehicle? @relation(fields: [vehicleId], references: [id])
   carLocation    String?
-
-  // Common
   description    String?
   estimatedPrice Float?
   finalPrice     Float?
   notes          String?
   completionNote String?
-
-  // Agent location tracking
   agentLat       Float?
   agentLng       Float?
   agentUpdatedAt DateTime?
-
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  details        Json?
   messages       Message[]
+  agent          User?             @relation("AgentOrders", fields: [agentId], references: [id])
+  customer       User              @relation("CustomerOrders", fields: [customerId], references: [id])
+  vehicle        Vehicle?          @relation(fields: [vehicleId], references: [id])
+  inspections    OrderInspection[]
+
+  @@index([customerId])
+  @@index([agentId])
+  @@index([status])
+}
+
+model OrderInspection {
+  id        String   @id @default(cuid())
+  orderId   String
+  type      String
+  photos    String[]
+  notes     String?
+  createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
 }
 
 model Message {
   id        String   @id @default(cuid())
   orderId   String
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   senderId  String
-  sender    User     @relation("SentMessages", fields: [senderId], references: [id])
   content   String
   createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sender    User     @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@index([orderId])
+}
+
+model SubscriptionPlan {
+  id            String   @id @default(cuid())
+  name          String
+  category      String
+  price         Float
+  interval      String
+  features      String[]
+  isPopular     Boolean  @default(false)
+  stripePriceId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  users         User[]
+}
+
+model BusinessTier {
+  id        String   @id @default(cuid())
+  plan      String
+  volume    String
+  price     Float
+  interval  String
+  createdAt DateTime @default(now())
+}
+
+model ServiceFee {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  baseFee     Float
+  serviceType String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

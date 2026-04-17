@@ -21,12 +21,18 @@ import AgentDashboard from "./pages/agent/AgentDashboard";
 import MyJobs from "./pages/agent/MyJobs";
 import Earnings from "./pages/agent/Earnings";
 import AgentJobDetail from "./pages/agent/AgentJobDetail";
+import ApplyAgent from "./pages/agent/ApplyAgent";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminCustomers from "./pages/admin/AdminCustomers";
 import AdminAgents from "./pages/admin/AdminAgents";
 import AdminMessages from "./pages/admin/AdminMessages";
+import AdminPricing from "./pages/admin/AdminPricing";
+import AdminAnnouncements from "./pages/admin/AdminAnnouncements";
 import NotFound from "./pages/NotFound";
+import Index from "./pages/Index";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +72,8 @@ const App = () => (
             <Route path="/admin/customers" element={<AdminCustomers />} />
             <Route path="/admin/agents" element={<AdminAgents />} />
             <Route path="/admin/messages" element={<AdminMessages />} />
+            <Route path="/admin/pricing" element={<AdminPricing />} />
+            <Route path="/admin/announcements" element={<AdminAnnouncements />} />
           </Route>
 
           {/* Agent routes */}
@@ -77,6 +85,7 @@ const App = () => (
             }
           >
             <Route path="/agent" element={<AgentDashboard />} />
+            <Route path="/agent/apply" element={<ApplyAgent />} />
             <Route path="/agent/my-jobs" element={<MyJobs />} />
             <Route path="/agent/earnings" element={<Earnings />} />
             <Route path="/agent/jobs/:id" element={<AgentJobDetail />} />
@@ -96,8 +105,11 @@ const App = () => (
             <Route path="/orders/:id" element={<OrderDetail />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/pricing" element={<Pricing />} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Route>
+          {/* Guest landing page */}
+          <Route path="/" element={<Index />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api";
 import { Loader2, MapPin, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Geolocation } from "@capacitor/geolocation";
 
 interface LocationSharingProps {
   orderId: string;
@@ -22,29 +23,18 @@ export default function LocationSharing({ orderId, isActive }: LocationSharingPr
     [orderId]
   );
 
-  const shareLocation = useCallback(() => {
-    return new Promise<void>((resolve) => {
-      if (!navigator.geolocation) {
-        setError("Geolocation is not supported by this browser.");
-        resolve();
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          postLocation(latitude, longitude);
-          setIsSharing(true);
-          setError(null);
-          resolve();
-        },
-        () => {
-          setError("Location access denied — please enable location in browser settings.");
-          resolve();
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    });
+  const shareLocation = useCallback(async () => {
+    try {
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000,
+      });
+      postLocation(position.coords.latitude, position.coords.longitude);
+      setIsSharing(true);
+      setError(null);
+    } catch {
+      setError("Location access denied or failed. Please enable location permissions.");
+    }
   }, [postLocation]);
 
   const handleStartSharing = async () => {
@@ -53,19 +43,34 @@ export default function LocationSharing({ orderId, isActive }: LocationSharingPr
     setIsLoading(false);
   };
 
-  // Auto-update every 30 seconds once sharing is active
+  // Auto-update location once sharing is active
   useEffect(() => {
     if (!isSharing || !isActive) return;
-    const interval = setInterval(() => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => postLocation(pos.coords.latitude, pos.coords.longitude),
-        () => {
-          // Silently fail on background updates
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    }, 30000);
-    return () => clearInterval(interval);
+
+    let watchId: string | null = null;
+    
+    const startWatching = async () => {
+      try {
+        watchId = await Geolocation.watchPosition(
+          { enableHighAccuracy: true, timeout: 10000 },
+          (position, err) => {
+            if (position) {
+              postLocation(position.coords.latitude, position.coords.longitude);
+            }
+          }
+        );
+      } catch {
+        setError("Background location tracking failed.");
+      }
+    };
+
+    startWatching();
+
+    return () => {
+      if (watchId) {
+        Geolocation.clearWatch({ id: watchId });
+      }
+    };
   }, [isSharing, isActive, postLocation]);
 
   // Stop sharing when job becomes inactive

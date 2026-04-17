@@ -19,11 +19,19 @@ export type OrderResponse = {
   agentLat: number | null;
   agentLng: number | null;
   agentUpdatedAt: string | null;
+  details: Record<string, any> | null;
   createdAt: string;
   updatedAt: string;
   customer?: { id: string; name: string; email: string; image: string | null; phone?: string | null };
   agent?: { id: string; name: string; email: string; image: string | null } | null;
   vehicle?: { id: string; make: string; model: string; year: string | null; color: string | null; plate: string | null } | null;
+  inspections?: Array<{
+    id: string;
+    type: "pickup" | "dropoff";
+    photos: string[];
+    notes: string | null;
+    createdAt: string;
+  }>;
 };
 
 export type VehicleResponse = {
@@ -42,8 +50,12 @@ export type UserProfile = {
   email: string;
   image: string | null;
   role: string;
+  adminRole: string | null;
   phone: string | null;
   address: string | null;
+  subscriptionPlanId: string | null;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
 };
 
 export const SERVICE_TYPES = {

@@ -17,7 +17,9 @@ import {
   MessageSquare,
   Package,
   Briefcase,
+  Camera,
 } from "lucide-react";
+import InspectionUpload from "@/components/InspectionUpload";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/StatusBadge";
 import {
@@ -29,6 +31,8 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { getServiceIcon, getServiceLabel } from "@/lib/service-helpers";
+import LiveTrackingMap from "@/components/LiveTrackingMap";
+import LocationSharing from "@/components/LocationSharing";
 import type { OrderResponse } from "@/types/orders";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -121,6 +125,16 @@ export default function AgentJobDetail() {
     onError: () => toast({ title: "Failed to update job", variant: "destructive" }),
   });
 
+  const inspectionMutation = useMutation({
+    mutationFn: (values: { type: string; photos: string[]; notes?: string }) =>
+      api.post(`/api/orders/${id}/inspections`, values),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["order", id] });
+      toast({ title: "Inspection documented!" });
+    },
+    onError: () => toast({ title: "Failed to save inspection", variant: "destructive" }),
+  });
+
   if (isLoading || !order) {
     return (
       <div className="space-y-4 px-4 pt-4">
@@ -151,6 +165,9 @@ export default function AgentJobDetail() {
         .filter(Boolean).join(" ")
     : null;
 
+  const pickupInspection = order.inspections?.find(i => i.type === "pickup");
+  const dropoffInspection = order.inspections?.find(i => i.type === "dropoff");
+
   const formattedDate = new Date(order.createdAt).toLocaleDateString("en-US", {
     month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
   });
@@ -172,6 +189,25 @@ export default function AgentJobDetail() {
         </div>
         <StatusBadge status={order.status} />
       </div>
+
+      {!isCancelled && (
+        <div className="mx-4 mb-5 overflow-hidden rounded-2xl border border-border/40 bg-card">
+          <LiveTrackingMap
+            pickupAddress={order.pickupAddress}
+            dropoffAddress={order.dropoffAddress}
+            carLocation={order.carLocation}
+            agentLat={order.agentLat}
+            agentLng={order.agentLng}
+          />
+        </div>
+      )}
+
+      {/* Sharing controls for active jobs */}
+      {(isAccepted || isInProgress) && (
+        <div className="px-4">
+          <LocationSharing orderId={order.id} isActive={isAccepted || isInProgress} />
+        </div>
+      )}
 
       <div className="space-y-5">
         {/* Progress Tracker */}
@@ -214,13 +250,73 @@ export default function AgentJobDetail() {
           </DetailSection>
         )}
 
+        {/* Documentation / Inspections */}
+        {(pickupInspection || dropoffInspection) && (
+          <DetailSection title="Condition Documentation">
+            {pickupInspection && (
+              <div className="border-b border-border/30 px-4 py-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Camera className="h-4 w-4 text-emerald-400" />
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">Pickup Inspection</span>
+                </div>
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  {pickupInspection.photos.map((url, i) => (
+                    <div key={i} className="aspect-square rounded-lg border border-border/50 overflow-hidden bg-muted">
+                      <img src={url} className="h-full w-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+                {pickupInspection.notes && (
+                  <p className="text-xs text-muted-foreground italic">"{pickupInspection.notes}"</p>
+                )}
+              </div>
+            )}
+            {dropoffInspection && (
+              <div className="px-4 py-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Camera className="h-4 w-4 text-amber-400" />
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">Drop-off Inspection</span>
+                </div>
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  {dropoffInspection.photos.map((url, i) => (
+                    <div key={i} className="aspect-square rounded-lg border border-border/50 overflow-hidden bg-muted">
+                      <img src={url} className="h-full w-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+                {dropoffInspection.notes && (
+                  <p className="text-xs text-muted-foreground italic">"{dropoffInspection.notes}"</p>
+                )}
+              </div>
+            )}
+          </DetailSection>
+        )}
+
         {/* Service & Location */}
         <DetailSection title="Service Details">
           <DetailRow icon={Package} label="Service Type" value={getServiceLabel(order.serviceType)} iconClass="text-primary" />
           <DetailRow icon={MapPin} label="Pickup / Location" value={order.pickupAddress ?? order.carLocation ?? null} iconClass="text-emerald-400" />
           <DetailRow icon={MapPin} label="Dropoff" value={order.dropoffAddress ?? null} iconClass="text-amber-400" />
           <DetailRow icon={FileText} label="Description" value={order.description ?? null} iconClass="text-muted-foreground" />
-          <DetailRow icon={FileText} label="Notes" value={order.notes ?? null} iconClass="text-muted-foreground" last />
+          <DetailRow icon={FileText} label="Notes" value={order.notes ?? null} iconClass="text-muted-foreground" last={!order.details || Object.keys(order.details).length === 0} />
+          
+          {order.details && Object.keys(order.details).length > 0 ? (
+            <div className="px-4 py-3.5 border-t border-border/30">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">Service Requirements</p>
+              <div className="grid grid-cols-2 gap-y-4 gap-x-2">
+                {Object.entries(order.details).map(([key, value]) => {
+                  if (value === undefined || value === null || value === "") return null;
+                  const formattedKey = key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase());
+                  return (
+                    <div key={key}>
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{formattedKey}</span>
+                      <p className="text-sm font-medium text-foreground">{String(value)}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
         </DetailSection>
 
         {/* Vehicle (if car service) */}
@@ -267,29 +363,45 @@ export default function AgentJobDetail() {
         )}
 
         {isAccepted && (
-          <div className="px-4">
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => statusMutation.mutate({ status: "in_progress" })}
-              disabled={statusMutation.isPending}
-              className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-blue-500 text-sm font-bold text-white shadow-lg shadow-blue-500/20 disabled:opacity-60"
-            >
-              {statusMutation.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
-              Start Job
-            </motion.button>
+          <div className="px-4 space-y-4">
+            {!pickupInspection ? (
+              <InspectionUpload 
+                type="pickup" 
+                onComplete={(photos, notes) => inspectionMutation.mutate({ type: "pickup", photos, notes })} 
+                isLoading={inspectionMutation.isPending}
+              />
+            ) : (
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => statusMutation.mutate({ status: "in_progress" })}
+                disabled={statusMutation.isPending}
+                className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-blue-500 text-sm font-bold text-white shadow-lg shadow-blue-500/20 disabled:opacity-60"
+              >
+                {statusMutation.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
+                Pickup Complete: Start Job
+              </motion.button>
+            )}
           </div>
         )}
 
         {isInProgress && (
-          <div className="px-4">
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setShowCompleteDialog(true)}
-              className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 text-sm font-bold text-black shadow-lg shadow-amber-500/20"
-            >
-              <CheckCircle2 className="h-5 w-5" />
-              Mark as Complete
-            </motion.button>
+          <div className="px-4 space-y-4">
+            {!dropoffInspection ? (
+              <InspectionUpload 
+                type="dropoff" 
+                onComplete={(photos, notes) => inspectionMutation.mutate({ type: "dropoff", photos, notes })} 
+                isLoading={inspectionMutation.isPending}
+              />
+            ) : (
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setShowCompleteDialog(true)}
+                className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 text-sm font-bold text-black shadow-lg shadow-amber-500/20"
+              >
+                <CheckCircle2 className="h-5 w-5" />
+                Drop-off Complete: Mark Complete
+              </motion.button>
+            )}
           </div>
         )}
 

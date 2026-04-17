@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../prisma";
 import { auth } from "../auth";
-import { CreateOrderSchema, UpdateOrderStatusSchema, UpdateAgentLocationSchema } from "../types";
+import { CreateOrderSchema, UpdateOrderStatusSchema, UpdateAgentLocationSchema, OrderInspectionSchema } from "../types";
 import {
   notifyAdminNewOrder,
   notifyCustomerOrderAccepted,
@@ -51,23 +51,48 @@ ordersRouter.get("/", async (c) => {
 ordersRouter.post("/", zValidator("json", CreateOrderSchema), async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
-  if (user.role !== "customer") return c.json({ error: { message: "Only customers can create orders", code: "FORBIDDEN" } }, 403);
 
   const body = c.req.valid("json");
+
+  // Multi-Role & Subscription Guard
+  const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+  if (!dbUser?.subscriptionPlanId && user.role !== "admin") {
+    return c.json({ 
+      error: { 
+        message: "Active subscription required. Please subscribe to a plan to request services.", 
+        code: "SUBSCRIPTION_REQUIRED" 
+      } 
+    }, 403);
+  }
+  
+  const {
+    category,
+    serviceType,
+    pickupAddress,
+    dropoffAddress,
+    packageType,
+    courierService,
+    vehicleId,
+    carLocation,
+    description,
+    notes,
+    ...dynamicDetails
+  } = body as Record<string, any>;
 
   const order = await prisma.order.create({
     data: {
       customerId: user.id,
-      category: body.category,
-      serviceType: body.serviceType,
-      pickupAddress: body.category === "delivery" ? body.pickupAddress : undefined,
-      dropoffAddress: body.category === "delivery" ? body.dropoffAddress : undefined,
-      packageType: body.category === "delivery" ? body.packageType : undefined,
-      courierService: body.category === "delivery" ? body.courierService : undefined,
-      vehicleId: body.category === "car_service" ? body.vehicleId : undefined,
-      carLocation: body.category === "car_service" ? body.carLocation : undefined,
-      description: body.description,
-      notes: body.notes,
+      category: category,
+      serviceType: serviceType,
+      pickupAddress: category === "delivery" ? pickupAddress : undefined,
+      dropoffAddress: category === "delivery" ? dropoffAddress : undefined,
+      packageType: category === "delivery" ? packageType : undefined,
+      courierService: category === "delivery" ? courierService : undefined,
+      vehicleId: category === "car_service" ? vehicleId : undefined,
+      carLocation: category === "car_service" ? carLocation : undefined,
+      description: description,
+      notes: notes,
+      details: Object.keys(dynamicDetails).length > 0 ? dynamicDetails : undefined,
     },
     include: {
       customer: { select: { id: true, name: true, email: true, image: true } },
@@ -99,6 +124,7 @@ ordersRouter.get("/:id", async (c) => {
       customer: { select: { id: true, name: true, email: true, image: true } },
       agent: { select: { id: true, name: true, email: true, image: true } },
       vehicle: { select: { id: true, make: true, model: true, year: true, color: true, plate: true } },
+      inspections: true,
     },
   });
 
@@ -120,8 +146,23 @@ ordersRouter.patch("/:id/status", zValidator("json", UpdateOrderStatusSchema), a
   const orderId = c.req.param("id");
   const { status, completionNote } = c.req.valid("json");
 
-  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  const order = await prisma.order.findUnique({ 
+    where: { id: orderId } ,
+    include: { inspections: true }
+  });
   if (!order) return c.json({ error: { message: "Order not found", code: "NOT_FOUND" } }, 404);
+
+  // Validation: Require inspection before status changes
+  if (user.role === "agent") {
+    if (status === "in_progress") {
+      const hasPickup = order.inspections.some(i => i.type === "pickup");
+      if (!hasPickup) return c.json({ error: { message: "Pickup inspection required before starting job", code: "INSPECTION_REQUIRED" } }, 400);
+    }
+    if (status === "completed") {
+      const hasDropoff = order.inspections.some(i => i.type === "dropoff");
+      if (!hasDropoff) return c.json({ error: { message: "Drop-off inspection required before completing job", code: "INSPECTION_REQUIRED" } }, 400);
+    }
+  }
 
   if (user.role === "customer") {
     if (order.customerId !== user.id) return c.json({ error: { message: "Forbidden", code: "FORBIDDEN" } }, 403);
@@ -156,7 +197,17 @@ ordersRouter.patch("/:id/status", zValidator("json", UpdateOrderStatusSchema), a
 ordersRouter.patch("/:id/accept", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
-  if (user.role !== "agent") return c.json({ error: { message: "Only agents can accept orders", code: "FORBIDDEN" } }, 403);
+  
+  console.log(`[AcceptJob] User ${user.email} (Role: ${user.role}) is trying to accept a job.`);
+  
+  if (user.role !== "agent") {
+    return c.json({ 
+      error: { 
+        message: `Role forbidden: Your current session role is '${user.role}'. Please refresh or re-login to update to 'agent'.`, 
+        code: "FORBIDDEN" 
+      } 
+    }, 403);
+  }
 
   const orderId = c.req.param("id");
   const order = await prisma.order.findUnique({ where: { id: orderId } });
@@ -207,6 +258,35 @@ ordersRouter.patch("/:id/location", zValidator("json", UpdateAgentLocationSchema
   });
 
   return c.json({ data: { lat: updated.agentLat, lng: updated.agentLng, updatedAt: updated.agentUpdatedAt } });
+});
+
+// POST /api/orders/:id/inspections - Submit an inspection (agents only)
+ordersRouter.post("/:id/inspections", zValidator("json", OrderInspectionSchema), async (c) => {
+  const user = c.get("user");
+  if (!user || user.role !== "agent") {
+    return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+  }
+
+  const orderId = c.req.param("id");
+  const { type, photos, notes } = c.req.valid("json");
+
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) return c.json({ error: { message: "Order not found", code: "NOT_FOUND" } }, 404);
+
+  if (order.agentId !== user.id) {
+    return c.json({ error: { message: "Forbidden", code: "FORBIDDEN" } }, 403);
+  }
+
+  const inspection = await prisma.orderInspection.create({
+    data: {
+      orderId,
+      type,
+      photos,
+      notes,
+    },
+  });
+
+  return c.json({ data: inspection }, 201);
 });
 
 export { ordersRouter };

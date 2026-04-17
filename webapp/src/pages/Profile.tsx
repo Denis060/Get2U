@@ -21,6 +21,10 @@ import {
   ChevronRight,
   Moon,
   Sun,
+  Scale,
+  FileBadge,
+  LayoutDashboard,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -155,10 +159,34 @@ export default function Profile() {
   });
 
   const switchRole = useMutation({
-    mutationFn: () => api.patch<UserProfile>("/api/me/role", { role: "agent" }),
-    onSuccess: () => {
-      navigate("/agent");
+    mutationFn: (nextRole: string) => {
+      return api.patch<{ role: string }>("/api/me/role", { role: nextRole });
     },
+    onSuccess: async (res) => {
+      toast.promise(authClient.getSession({ force: true }), {
+        loading: "Refreshing session...",
+        success: "Session refreshed!",
+        error: "Failed to refresh session.",
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      
+      const targetRole = res.role;
+      toast.success(`Switched to ${targetRole} mode`);
+
+      // Small delay to ensure session cookies are updated before navigation
+      setTimeout(() => {
+        if (targetRole === "agent") {
+          navigate("/agent");
+        } else {
+          navigate("/dashboard");
+        }
+      }, 500);
+    },
+    onError: (err: any) => {
+      const message = err.response?.data?.error?.message || "Failed to switch role.";
+      toast.error(message);
+    }
   });
 
   const addVehicle = useMutation({
@@ -175,6 +203,18 @@ export default function Profile() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
     },
+  });
+
+  const manageSubscription = useMutation({
+    mutationFn: () => api.post<{ url: string }>("/api/payments/create-portal-session", {}),
+    onSuccess: (data) => {
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to open subscription portal");
+    }
   });
 
   const handleSignOut = async () => {
@@ -305,6 +345,18 @@ export default function Profile() {
             />
           </>
         ) : null}
+        {profile?.subscriptionPlanId && (
+          <>
+            <div className="border-t border-border/30" />
+            <SettingsRow
+              icon={<Star className="h-4 w-4 text-amber-500" />}
+              label="Manage Subscription"
+              chevron={true}
+              onClick={() => manageSubscription.mutate()}
+              rightEl={manageSubscription.isPending ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mr-2" /> : null}
+            />
+          </>
+        )}
       </div>
 
       {/* Vehicles section */}
@@ -432,14 +484,112 @@ export default function Profile() {
         />
       </div>
 
-      {/* Agent section */}
+      {/* Work section */}
       <SectionHeader label="Work" />
       <div className={cn("overflow-hidden rounded-2xl border border-border/40 bg-card", isMobile ? "mx-4" : "")}>
+        {profile?.role === "admin" && (
+          <>
+            <SettingsRow
+              icon={<LayoutDashboard className="h-4 w-4 text-primary" />}
+              label="Admin Dashboard"
+              onClick={() => navigate("/admin")}
+            />
+            <div className="border-t border-border/30" />
+          </>
+        )}
         <SettingsRow
           icon={<ArrowLeftRight className="h-4 w-4 text-emerald-400" />}
-          label="Switch to Agent Mode"
-          onClick={() => switchRole.mutate()}
+          label={profile?.role === "agent" ? "Switch to Customer Mode" : "Switch to Agent Mode"}
+          onClick={() => switchRole.mutate(profile?.role === "agent" ? "customer" : "agent")}
         />
+        {profile?.adminRole && profile?.role !== "admin" && (
+          <>
+            <div className="border-t border-border/30" />
+            <SettingsRow
+              icon={<Shield className="h-4 w-4 text-purple-400" />}
+              label="Switch to Admin Mode"
+              onClick={() => switchRole.mutate("admin")}
+            />
+          </>
+        )}
+      </div>
+
+      {/* Legal & Support */}
+      <SectionHeader label="Legal & Support" />
+      <div className={cn("overflow-hidden rounded-2xl border border-border/40 bg-card", isMobile ? "mx-4" : "")}>
+        <Dialog>
+          <DialogTrigger asChild>
+            <div>
+              <SettingsRow
+                icon={<Scale className="h-4 w-4 text-purple-400" />}
+                label="Platform Disclaimer"
+              />
+            </div>
+          </DialogTrigger>
+          <DialogContent className="max-w-[90vw] rounded-3xl">
+            <DialogHeader>
+              <DialogTitle>Platform Disclaimer</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 text-sm text-muted-foreground leading-relaxed h-[60vh] overflow-y-auto pr-2">
+              <div className="rounded-2xl bg-amber-500/10 p-4 border border-amber-500/20">
+                <p className="font-bold text-amber-600 mb-1 flex items-center gap-2">
+                  <Shield className="h-4 w-4" /> Labor-Only Subscription
+                </p>
+                <p className="text-xs text-amber-700">
+                  Your monthly subscription fee covers the labor and logistics of our agents. It does NOT cover the cost of physical goods or products.
+                </p>
+              </div>
+              
+              <section className="space-y-2">
+                <h4 className="font-bold text-foreground">1. Product Costs</h4>
+                <p>Any items purchased on your behalf (including but not limited to: fuel, motor oil, car parts, laundry fees, or retail goods) are the sole responsibility of the customer.</p>
+              </section>
+
+              <section className="space-y-2">
+                <h4 className="font-bold text-foreground">2. Payment for Goods</h4>
+                <p>Customers must reimburse the agent directly or pay the establishment for all goods. Our agents are not authorized to pay for customer goods using personal funds without a pre-arranged reimbursement via the platform.</p>
+              </section>
+
+              <section className="space-y-2">
+                <h4 className="font-bold text-foreground">3. Liability</h4>
+                <p>Get2U acts as a logistics intermediary. While we vet our agents, we are not liable for the quality of third-party products (like the specific brand of oil or fuel) used, unless explicitly specified in the order details.</p>
+              </section>
+            </div>
+          </DialogContent>
+        </Dialog>
+        <div className="border-t border-border/30" />
+        <Dialog>
+          <DialogTrigger asChild>
+            <div>
+              <SettingsRow
+                icon={<FileBadge className="h-4 w-4 text-blue-400" />}
+                label="Terms of Service"
+                chevron
+              />
+            </div>
+          </DialogTrigger>
+          <DialogContent className="max-w-[90vw] rounded-3xl">
+            <DialogHeader>
+              <DialogTitle>Terms of Service</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 text-sm text-muted-foreground leading-relaxed h-[60vh] overflow-y-auto pr-2">
+              <section className="space-y-2">
+                <h4 className="font-bold text-foreground">1. Acceptance of Terms</h4>
+                <p>By accessing and using the Get2U platform, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.</p>
+              </section>
+
+              <section className="space-y-2">
+                <h4 className="font-bold text-foreground">2. Service Description</h4>
+                <p>Get2U provides a platform connecting customers with independent agents for pickup, delivery, and concierge services. We do not provide transportation services ourselves.</p>
+              </section>
+
+              <section className="space-y-2">
+                <h4 className="font-bold text-foreground">3. User Responsibilities</h4>
+                <p>Users must provide accurate information, maintain the security of their accounts, and comply with all applicable local laws when using the service.</p>
+              </section>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Danger zone */}

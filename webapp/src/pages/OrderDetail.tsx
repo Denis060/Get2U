@@ -1,6 +1,8 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { api } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import {
   ChevronLeft,
@@ -13,6 +15,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import OrderChat from "@/components/OrderChat";
+import LiveTrackingMap from "@/components/LiveTrackingMap";
 import { useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/StatusBadge";
@@ -77,6 +80,30 @@ export default function OrderDetail() {
     enabled: !!id,
   });
 
+  useEffect(() => {
+    if (!id) return;
+    const channel = supabase
+      .channel(`order-update-${id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "Order",
+          filter: `id=eq.${id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["order", id] });
+          queryClient.invalidateQueries({ queryKey: ["orders"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, queryClient]);
+
   const cancelMutation = useMutation({
     mutationFn: () => api.patch(`/api/orders/${id}/status`, { status: "cancelled" }),
     onSuccess: () => {
@@ -140,6 +167,21 @@ export default function OrderDetail() {
         </div>
         <StatusBadge status={order.status} size="md" />
       </div>
+
+      {!isCancelled && (
+        <div className={cn("mb-4", px)}>
+          <div className="overflow-hidden rounded-2xl border border-border/40 bg-card">
+            <LiveTrackingMap
+              pickupAddress={order.pickupAddress}
+              dropoffAddress={order.dropoffAddress}
+              carLocation={order.carLocation}
+              agentLat={order.agentLat}
+              agentLng={order.agentLng}
+              agentName={order.agent?.name}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Progress tracker */}
       {!isCancelled ? (
@@ -256,6 +298,24 @@ export default function OrderDetail() {
             </div>
           ) : null}
 
+          {order.details && Object.keys(order.details).length > 0 ? (
+            <div className="px-4 py-3.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Additional Details</p>
+              <div className="grid grid-cols-2 gap-y-4 gap-x-2">
+                {Object.entries(order.details).map(([key, value]) => {
+                  if (value === undefined || value === null || value === "") return null;
+                  const formattedKey = key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase());
+                  return (
+                    <div key={key}>
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{formattedKey}</span>
+                      <p className="text-sm font-medium text-foreground">{String(value)}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
           {order.estimatedPrice != null ? (
             <div className="flex items-center justify-between px-4 py-3.5">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Estimated Price</p>
@@ -285,6 +345,40 @@ export default function OrderDetail() {
           </div>
         </div>
       ) : null}
+
+      {/* Documentation / Inspections */}
+      {order.inspections && order.inspections.length > 0 && (
+        <div className={cn("mb-4", px)}>
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Condition Proof</p>
+          <div className="overflow-hidden rounded-2xl border border-border/40 bg-card divide-y divide-border/30">
+            {order.inspections.map((inspection) => (
+              <div key={inspection.id} className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Star className={cn("h-4 w-4", inspection.type === "pickup" ? "text-emerald-400" : "text-amber-400")} />
+                  <span className="text-[11px] font-bold uppercase tracking-widest">
+                    {inspection.type === "pickup" ? "Pickup Inspection" : "Drop-off Proof"}
+                  </span>
+                  <span className="ml-auto text-[10px] text-muted-foreground uppercase">
+                    {new Date(inspection.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  {inspection.photos.map((url, i) => (
+                    <div key={i} className="aspect-square rounded-xl border border-border/50 overflow-hidden bg-muted transition-transform hover:scale-105">
+                      <img src={url} className="h-full w-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+                {inspection.notes && (
+                  <p className="text-xs text-muted-foreground italic bg-secondary/30 p-2.5 rounded-lg border border-border/20">
+                    "{inspection.notes}"
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Timestamps */}
       <div className={cn("mb-4 flex items-center gap-4 text-xs text-muted-foreground", px)}>

@@ -104,6 +104,7 @@ function CarReview({ data }: { data: Record<string, unknown> }) {
 }
 
 export default function ReviewSubmit({ serviceType, formData, onEdit, onSubmit, isSubmitting }: ReviewSubmitProps) {
+  const [acceptedDisclaimer, setAcceptedDisclaimer] = useState(false);
   const isDelivery = DELIVERY_TYPES.has(serviceType);
   const serviceLabel = SERVICE_LABELS[serviceType] ?? serviceType;
 
@@ -149,12 +150,38 @@ export default function ReviewSubmit({ serviceType, formData, onEdit, onSubmit, 
         </div>
       </div>
 
-      {/* Pricing note */}
-      <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 p-3">
-        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-        <p className="text-xs text-amber-800">
-          An agent will confirm the final price before starting your request.
-        </p>
+      {/* Legal Disclaimer Checkbox */}
+      <div className="space-y-3">
+        <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 p-3">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <p className="text-xs text-amber-800">
+            An agent will confirm the final labor price before starting your request.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setAcceptedDisclaimer(!acceptedDisclaimer)}
+          className={cn(
+            "flex w-full items-start gap-3 rounded-2xl border-2 p-4 text-left transition-all",
+            acceptedDisclaimer 
+              ? "border-emerald-500/50 bg-emerald-50/50 shadow-sm shadow-emerald-500/5" 
+              : "border-border/60 bg-white hover:border-border"
+          )}
+        >
+          <div className={cn(
+            "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-all",
+            acceptedDisclaimer ? "border-emerald-500 bg-emerald-500" : "border-border"
+          )}>
+            {acceptedDisclaimer && <div className="h-2 w-1.5 border-b-2 border-l-2 border-white -rotate-45 mb-0.5" />}
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs font-bold text-foreground">Legal Acknowledgment</p>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              I acknowledge that any product costs (e.g. oil, fuel, car wash fees, parts, package costs) are <span className="font-bold text-foreground underline decoration-[hsl(24_95%_48%)]">NOT</span> included in my subscription fee and must be paid separately.
+            </p>
+          </div>
+        </button>
       </div>
 
       {/* Actions */}
@@ -172,8 +199,13 @@ export default function ReviewSubmit({ serviceType, formData, onEdit, onSubmit, 
         <Button
           type="button"
           onClick={onSubmit}
-          disabled={isSubmitting}
-          className="flex-1 rounded-2xl bg-[hsl(24_95%_48%)] hover:bg-[hsl(24_95%_40%)] py-6 text-base font-semibold text-white"
+          disabled={isSubmitting || !acceptedDisclaimer}
+          className={cn(
+            "flex-1 rounded-2xl py-6 text-base font-semibold text-white transition-all shadow-lg",
+            acceptedDisclaimer 
+              ? "bg-[hsl(24_95%_48%)] hover:bg-[hsl(24_95%_40%)] shadow-orange-500/20" 
+              : "bg-gray-400 cursor-not-allowed shadow-none"
+          )}
         >
           {isSubmitting ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

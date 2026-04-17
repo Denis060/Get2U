@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Loader2, ArrowRight, User, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,9 +51,9 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-background">
+    <div className="flex min-h-[100dvh] flex-col bg-background sm:bg-secondary/30">
       {/* Top gradient hero */}
-      <div className="relative flex flex-col items-center justify-end overflow-hidden bg-gradient-to-br from-primary via-orange-500 to-amber-400 pb-10 pt-16"
+      <div className="relative flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-primary via-orange-500 to-amber-400 pb-16 pt-16 sm:pb-32 sm:pt-24"
         style={{ minHeight: "38vh" }}>
         {/* Decorative circles */}
         <div className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/10" />
@@ -70,7 +70,7 @@ export default function Login() {
             <Package className="h-8 w-8 text-white" />
           </div>
           <div className="text-center">
-            <h1 className="font-syne text-3xl font-bold text-white drop-shadow">
+            <h1 className="font-bricolage text-3xl font-bold text-white drop-shadow">
               Get2u Errand
             </h1>
             <p className="mt-1 text-sm text-orange-100/90">Your errands, handled.</p>
@@ -78,12 +78,12 @@ export default function Login() {
         </motion.div>
       </div>
 
-      {/* Bottom sheet form */}
+      {/* Bottom sheet / Card form */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, delay: 0.1 }}
-        className="flex flex-1 flex-col rounded-t-3xl bg-background px-5 pt-6 shadow-2xl -mt-6 relative z-10"
+        className="flex flex-1 sm:flex-none flex-col w-full sm:max-w-md sm:mx-auto rounded-t-3xl sm:rounded-3xl bg-background px-5 sm:px-8 pt-6 sm:pb-8 shadow-2xl -mt-6 sm:-mt-24 relative z-10 sm:border sm:border-border/50 sm:mb-12"
       >
         {/* Tab switcher */}
         <div className="mb-6 flex rounded-2xl bg-secondary p-1">
@@ -171,7 +171,7 @@ export default function Login() {
                     inputMode="text"
                     autoCapitalize="words"
                     autoCorrect="off"
-                    placeholder="John Doe"
+                    placeholder="John Kamara"
                     value={suName}
                     onChange={(e) => { setSuName(e.target.value); if (suError) setSuError(""); }}
                     className="h-12 rounded-xl pl-12"
@@ -213,7 +213,7 @@ export default function Login() {
         </AnimatePresence>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          By continuing, you agree to our Terms of Service and Privacy Policy.
+          By continuing, you agree to our <Link to="/terms" className="underline hover:text-foreground">Terms of Service</Link> and <Link to="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>.
         </p>
       </motion.div>
     </div>

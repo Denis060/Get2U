@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   Shield,
+  Megaphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,16 +20,26 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { path: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { path: "/admin/orders", label: "Orders", icon: ClipboardList },
-  { path: "/admin/customers", label: "Customers", icon: Users },
-  { path: "/admin/agents", label: "Agents", icon: UserCheck },
-  { path: "/admin/messages", label: "Messages", icon: MessageSquare },
+  { path: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true, roles: ["super_admin", "dispatcher", "finance", "marketing", "vetting_officer", "support"] },
+  { path: "/admin/orders", label: "Orders", icon: ClipboardList, roles: ["super_admin", "dispatcher", "support", "finance"] },
+  { path: "/admin/customers", label: "Customers", icon: Users, roles: ["super_admin", "marketing", "vetting_officer"] },
+  { path: "/admin/agents", label: "Agents", icon: UserCheck, roles: ["super_admin", "vetting_officer", "dispatcher"] },
+  { path: "/admin/messages", label: "Messages", icon: MessageSquare, roles: ["super_admin", "dispatcher", "support"] },
+  { path: "/admin/pricing", label: "Pricing", icon: LayoutDashboard, roles: ["super_admin", "finance"] },
+  { path: "/admin/announcements", label: "Announcements", icon: Megaphone, roles: ["super_admin", "marketing"] },
 ];
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+  const { data: session } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const user = session?.user as any;
+  const adminRole = user?.adminRole || "support";
+
+  const visibleNavItems = NAV_ITEMS.filter(item => 
+    item.roles.includes(adminRole) || adminRole === "super_admin"
+  );
 
   const isActive = (item: (typeof NAV_ITEMS)[0]) =>
     item.exact
@@ -47,15 +58,20 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <Shield className="h-5 w-5 text-primary" />
         <div className="flex flex-col leading-none">
           <span className="text-sm font-bold text-foreground">Get2u Errand</span>
-          <span className="rounded bg-primary/10 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-primary w-fit">
-            Admin
-          </span>
+          <div className="flex flex-col gap-0.5 mt-1">
+            <span className="rounded bg-primary/10 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-primary w-fit">
+              Admin
+            </span>
+            <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">
+              {adminRole.replace("_", " ")}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Nav */}
       <nav className="flex-1 space-y-0.5 px-3 py-4">
-        {NAV_ITEMS.map((item) => {
+        {visibleNavItems.map((item) => {
           const active = isActive(item);
           return (
             <button

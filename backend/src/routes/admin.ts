@@ -7,6 +7,9 @@ import {
   AdminApproveAgentSchema,
   AdminAssignAgentSchema,
   UpdateOrderStatusSchema,
+  UpdateSubscriptionPlanSchema,
+  UpdateBusinessTierSchema,
+  UpdateServiceFeeSchema,
 } from "../types";
 
 type SessionUser = typeof auth.$Infer.Session.user & { role: string };
@@ -29,6 +32,20 @@ adminRouter.use("*", async (c, next) => {
   }
   await next();
 });
+
+// Permission helper
+const requireRoles = (allowedRoles: string[]) => {
+  return async (c: any, next: any) => {
+    const user = c.get("user");
+    // super_admin always has access
+    if (user.adminRole === "super_admin") return await next();
+    
+    if (!user.adminRole || !allowedRoles.includes(user.adminRole)) {
+      return c.json({ error: { message: "Forbidden: insufficient permissions", code: "FORBIDDEN" } }, 403);
+    }
+    await next();
+  };
+};
 
 // GET /api/admin/stats — Dashboard statistics
 adminRouter.get("/stats", async (c) => {
@@ -63,6 +80,70 @@ adminRouter.get("/stats", async (c) => {
   });
 });
 
+// GET /api/admin/analytics — Detailed historical data for charts
+adminRouter.get("/analytics", async (c) => {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const [orders, users] = await prisma.$transaction([
+    prisma.order.findMany({
+      where: { createdAt: { gte: thirtyDaysAgo } },
+      select: { createdAt: true, serviceType: true, finalPrice: true, category: true },
+    }),
+    prisma.user.findMany({
+      where: { createdAt: { gte: thirtyDaysAgo } },
+      select: { createdAt: true, role: true },
+    }),
+  ]);
+
+  // Aggregate Orders per Day
+  const orderTrends: Record<string, { date: string; count: number; revenue: number }> = {};
+  // Aggregate Service Distribution
+  const serviceStats: Record<string, number> = {};
+  
+  // Fill 30 day gaps
+  for (let i = 0; i <= 30; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split("T")[0];
+    orderTrends[dateStr] = { date: dateStr, count: 0, revenue: 0 };
+  }
+
+  orders.forEach((o) => {
+    const dateStr = o.createdAt.toISOString().split("T")[0];
+    if (orderTrends[dateStr]) {
+      orderTrends[dateStr].count += 1;
+      orderTrends[dateStr].revenue += (o.finalPrice || 0);
+    }
+    serviceStats[o.serviceType] = (serviceStats[o.serviceType] || 0) + 1;
+  });
+
+  // Aggregate User Growth
+  const userTrends: Record<string, { date: string; customers: number; agents: number }> = {};
+  for (let i = 0; i <= 30; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split("T")[0];
+    userTrends[dateStr] = { date: dateStr, customers: 0, agents: 0 };
+  }
+
+  users.forEach((u) => {
+    const dateStr = u.createdAt.toISOString().split("T")[0];
+    if (userTrends[dateStr]) {
+      if (u.role === "agent") userTrends[dateStr].agents += 1;
+      else userTrends[dateStr].customers += 1;
+    }
+  });
+
+  return c.json({
+    data: {
+      orderTrends: Object.values(orderTrends).reverse(),
+      userTrends: Object.values(userTrends).reverse(),
+      serviceDistribution: Object.entries(serviceStats).map(([name, value]) => ({ name, value })),
+    },
+  });
+});
+
 // GET /api/admin/users — List all users with stats
 adminRouter.get("/users", async (c) => {
   const roleFilter = c.req.query("role");
@@ -87,12 +168,10 @@ adminRouter.get("/users", async (c) => {
   const users = await prisma.user.findMany({
     where,
     include: {
-      agentProfile: {
-        select: {
-          approved: true,
-          rating: true,
-          totalJobs: true,
-        },
+      agentProfile: true,
+      vehicles: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
       },
       _count: {
         select: {
@@ -113,13 +192,8 @@ adminRouter.get("/users", async (c) => {
     createdAt: u.createdAt,
     ordersAsCustomer: u._count.ordersAsCustomer,
     ordersAsAgent: u._count.ordersAsAgent,
-    agentProfile: u.agentProfile
-      ? {
-          approved: u.agentProfile.approved,
-          rating: u.agentProfile.rating,
-          totalJobs: u.agentProfile.totalJobs,
-        }
-      : null,
+    agentProfile: u.agentProfile,
+    latestVehicle: u.vehicles[0] || null,
   }));
 
   return c.json({ data: result });
@@ -128,7 +202,7 @@ adminRouter.get("/users", async (c) => {
 // PATCH /api/admin/users/:id/role — Change user role
 adminRouter.patch("/users/:id/role", zValidator("json", AdminUpdateRoleSchema), async (c) => {
   const id = c.req.param("id");
-  const { role } = c.req.valid("json");
+  const { role, adminRole } = c.req.valid("json");
 
   const existing = await prisma.user.findUnique({ where: { id } });
   if (!existing) {
@@ -137,12 +211,16 @@ adminRouter.patch("/users/:id/role", zValidator("json", AdminUpdateRoleSchema), 
 
   const updated = await prisma.user.update({
     where: { id },
-    data: { role },
+    data: { 
+      role,
+      adminRole: role === "admin" ? (adminRole ?? "support") : null,
+    },
     select: {
       id: true,
       name: true,
       email: true,
       role: true,
+      adminRole: true,
       phone: true,
       createdAt: true,
     },
@@ -152,21 +230,46 @@ adminRouter.patch("/users/:id/role", zValidator("json", AdminUpdateRoleSchema), 
 });
 
 // PATCH /api/admin/users/:id/approve-agent — Approve or reject agent
-adminRouter.patch("/users/:id/approve-agent", zValidator("json", AdminApproveAgentSchema), async (c) => {
-  const id = c.req.param("id");
-  const { approved } = c.req.valid("json");
+adminRouter.patch("/users/:id/approve-agent", requireRoles(["vetting_officer"]), zValidator("json", AdminApproveAgentSchema), async (c) => {
+  const userId = c.req.param("id");
+  const { status, rejectionReason } = c.req.valid("json");
 
-  const existing = await prisma.agentProfile.findUnique({ where: { userId: id } });
+  const existing = await prisma.agentProfile.findUnique({ where: { userId } });
   if (!existing) {
     return c.json({ error: { message: "Agent profile not found", code: "NOT_FOUND" } }, 404);
   }
 
-  const updated = await prisma.agentProfile.update({
-    where: { userId: id },
-    data: { approved },
+  // Update Agent Profile
+  const updatedProfile = await prisma.agentProfile.update({
+    where: { userId },
+    data: { 
+      applicationStatus: status,
+      rejectionReason: status === "rejected" ? rejectionReason : null,
+    },
   });
 
-  return c.json({ data: updated });
+  // If approved, graduate the user role to agent and verify their latest vehicle
+  if (status === "approved") {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { role: "agent" },
+    });
+
+    // Verify the latest vehicle automatically
+    const latestVehicle = await prisma.vehicle.findFirst({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+    });
+    
+    if (latestVehicle) {
+      await prisma.vehicle.update({
+        where: { id: latestVehicle.id },
+        data: { isVerified: true },
+      });
+    }
+  }
+
+  return c.json({ data: updatedProfile });
 });
 
 // DELETE /api/admin/users/:id — Delete a user (cannot delete self)
@@ -232,7 +335,7 @@ adminRouter.get("/orders", async (c) => {
 });
 
 // PATCH /api/admin/orders/:id/assign — Assign an agent to an order
-adminRouter.patch("/orders/:id/assign", zValidator("json", AdminAssignAgentSchema), async (c) => {
+adminRouter.patch("/orders/:id/assign", requireRoles(["dispatcher"]), zValidator("json", AdminAssignAgentSchema), async (c) => {
   const id = c.req.param("id");
   const { agentId } = c.req.valid("json");
 
@@ -263,7 +366,7 @@ adminRouter.patch("/orders/:id/assign", zValidator("json", AdminAssignAgentSchem
 });
 
 // PATCH /api/admin/orders/:id/status — Force-update any order status
-adminRouter.patch("/orders/:id/status", zValidator("json", UpdateOrderStatusSchema), async (c) => {
+adminRouter.patch("/orders/:id/status", requireRoles(["dispatcher"]), zValidator("json", UpdateOrderStatusSchema), async (c) => {
   const id = c.req.param("id");
   const { status, completionNote } = c.req.valid("json");
 
@@ -286,6 +389,103 @@ adminRouter.patch("/orders/:id/status", zValidator("json", UpdateOrderStatusSche
   });
 
   return c.json({ data: updated });
+});
+
+// GET /api/admin/pricing-plans - List all plans
+adminRouter.get("/pricing-plans", async (c) => {
+  const plans = await prisma.subscriptionPlan.findMany({ orderBy: { price: "asc" } });
+  return c.json({ data: plans });
+});
+
+// POST /api/admin/pricing-plans - Create a plan
+adminRouter.post("/pricing-plans", requireRoles(["finance"]), zValidator("json", UpdateSubscriptionPlanSchema), async (c) => {
+  const body = c.req.valid("json");
+  const plan = await prisma.subscriptionPlan.create({ data: body });
+  return c.json({ data: plan }, 201);
+});
+
+// PATCH /api/admin/pricing-plans/:id - Update a plan
+adminRouter.patch("/pricing-plans/:id", requireRoles(["finance"]), zValidator("json", UpdateSubscriptionPlanSchema), async (c) => {
+  const id = c.req.param("id");
+  const body = c.req.valid("json");
+  const plan = await prisma.subscriptionPlan.update({ where: { id }, data: body });
+  return c.json({ data: plan });
+});
+
+// DELETE /api/admin/pricing-plans/:id - Delete a plan
+adminRouter.delete("/pricing-plans/:id", requireRoles(["super_admin"]), async (c) => {
+  const id = c.req.param("id");
+  await prisma.subscriptionPlan.delete({ where: { id } });
+  return c.json({ data: { success: true } });
+});
+
+// CRUD for Business Tiers
+adminRouter.get("/business-tiers", async (c) => {
+  const tiers = await prisma.businessTier.findMany({ orderBy: { price: "asc" } });
+  return c.json({ data: tiers });
+});
+
+adminRouter.post("/business-tiers", zValidator("json", UpdateBusinessTierSchema), async (c) => {
+  const body = c.req.valid("json");
+  const tier = await prisma.businessTier.create({ data: body });
+  return c.json({ data: tier }, 201);
+});
+
+adminRouter.patch("/business-tiers/:id", zValidator("json", UpdateBusinessTierSchema), async (c) => {
+  const id = c.req.param("id");
+  const body = c.req.valid("json");
+  const tier = await prisma.businessTier.update({ where: { id }, data: body });
+  return c.json({ data: tier });
+});
+
+adminRouter.delete("/business-tiers/:id", async (c) => {
+  const id = c.req.param("id");
+  await prisma.businessTier.delete({ where: { id } });
+  return c.json({ data: { success: true } });
+});
+
+// CRUD for Service Fees
+adminRouter.get("/service-fees", async (c) => {
+  const fees = await prisma.serviceFee.findMany({ orderBy: { baseFee: "asc" } });
+  return c.json({ data: fees });
+});
+
+adminRouter.post("/service-fees", zValidator("json", UpdateServiceFeeSchema), async (c) => {
+  const body = c.req.valid("json");
+  const fee = await prisma.serviceFee.create({ data: body });
+  return c.json({ data: fee }, 201);
+});
+
+adminRouter.patch("/service-fees/:id", zValidator("json", UpdateServiceFeeSchema), async (c) => {
+  const id = c.req.param("id");
+  const body = c.req.valid("json");
+  const fee = await prisma.serviceFee.update({ where: { id }, data: body });
+  return c.json({ data: fee });
+});
+
+// CRUD for Announcements (Marketing)
+adminRouter.get("/announcements", async (c) => {
+  const ann = await prisma.announcement.findMany({ orderBy: { createdAt: "desc" } });
+  return c.json({ data: ann });
+});
+
+adminRouter.post("/announcements", requireRoles(["marketing"]), async (c) => {
+  const body = await c.req.json();
+  const ann = await prisma.announcement.create({ data: body });
+  return c.json({ data: ann }, 201);
+});
+
+adminRouter.patch("/announcements/:id", requireRoles(["marketing"]), async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.json();
+  const ann = await prisma.announcement.update({ where: { id }, data: body });
+  return c.json({ data: ann });
+});
+
+adminRouter.delete("/announcements/:id", requireRoles(["marketing"]), async (c) => {
+  const id = c.req.param("id");
+  await prisma.announcement.delete({ where: { id } });
+  return c.json({ data: { success: true } });
 });
 
 export { adminRouter };

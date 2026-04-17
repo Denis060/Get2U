@@ -40,7 +40,7 @@ export default function AgentLayout() {
 
   const user = session?.user;
   const initials = user?.name
-    ? user.name.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2)
+    ? user.name.split(" ").filter(Boolean).map((w: string) => w[0]).join("").toUpperCase().slice(0, 2)
     : "?";
 
   const handleSignOut = async () => {
@@ -61,7 +61,7 @@ export default function AgentLayout() {
           <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
             <button
               onClick={() => navigate("/agent")}
-              className="flex items-center gap-2 font-syne text-xl font-bold tracking-tight"
+              className="flex items-center gap-2 font-bricolage text-xl font-bold tracking-tight"
             >
               <span className="text-emerald-400">Errand</span>
               <span className="text-foreground">Go</span>

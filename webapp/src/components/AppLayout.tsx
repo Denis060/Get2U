@@ -61,7 +61,7 @@ export default function AppLayout() {
           <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
             <button
               onClick={() => navigate("/dashboard")}
-              className="flex items-center gap-2 font-syne text-xl font-bold tracking-tight"
+              className="flex items-center gap-2 font-bricolage text-xl font-bold tracking-tight"
             >
               <span className="text-primary">Get2u</span>
               <span className="text-foreground">Errand</span>

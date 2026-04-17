@@ -28,6 +28,7 @@ type AdminUser = {
   name: string;
   email: string;
   role: string;
+  adminRole: string | null;
   phone: string | null;
   createdAt: string;
   _count: { ordersAsCustomer: number; ordersAsAgent: number };
@@ -39,6 +40,15 @@ const ROLE_COLORS: Record<string, string> = {
   agent: "bg-emerald-100 text-emerald-700",
   customer: "bg-blue-100 text-blue-700",
 };
+
+const ADMIN_SUB_ROLES = [
+  { value: "super_admin", label: "Super Admin" },
+  { value: "finance", label: "Finance" },
+  { value: "marketing", label: "Marketing" },
+  { value: "dispatcher", label: "Dispatcher" },
+  { value: "vetting_officer", label: "Vetting Officer" },
+  { value: "support", label: "Support" },
+];
 
 export default function AdminCustomers() {
   const { toast } = useToast();
@@ -52,11 +62,11 @@ export default function AdminCustomers() {
   });
 
   const changeRoleMutation = useMutation({
-    mutationFn: ({ userId, role }: { userId: string; role: string }) =>
-      api.patch(`/api/admin/users/${userId}/role`, { role }),
+    mutationFn: ({ userId, role, adminRole }: { userId: string; role: string; adminRole?: string }) =>
+      api.patch(`/api/admin/users/${userId}/role`, { role, adminRole }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-      toast({ title: "Role updated" });
+      toast({ title: "User permissions updated" });
     },
   });
 
@@ -128,13 +138,20 @@ export default function AdminCustomers() {
                   <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
                   <td className="px-4 py-3 text-muted-foreground">{u.phone ?? "—"}</td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
-                        ROLE_COLORS[u.role] ?? "bg-gray-100 text-gray-700"
-                      }`}
-                    >
-                      {u.role}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider w-fit ${
+                          ROLE_COLORS[u.role] ?? "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {u.role}
+                      </span>
+                      {u.role === "admin" && u.adminRole && (
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter ml-1">
+                          ↳ {u.adminRole.replace("_", " ")}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {u._count.ordersAsCustomer + u._count.ordersAsAgent}
@@ -148,7 +165,7 @@ export default function AdminCustomers() {
                         value={u.role}
                         onValueChange={(role) => changeRoleMutation.mutate({ userId: u.id, role })}
                       >
-                        <SelectTrigger className="h-7 w-28 text-xs">
+                        <SelectTrigger className="h-7 w-24 text-[10px] font-bold uppercase">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -157,6 +174,25 @@ export default function AdminCustomers() {
                           <SelectItem value="admin">Admin</SelectItem>
                         </SelectContent>
                       </Select>
+
+                      {u.role === "admin" && (
+                        <Select
+                          value={u.adminRole || "support"}
+                          onValueChange={(adminRole) => changeRoleMutation.mutate({ userId: u.id, role: "admin", adminRole })}
+                        >
+                          <SelectTrigger className="h-7 w-28 text-[9px] font-bold bg-purple-50 border-purple-200 text-purple-700 uppercase">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ADMIN_SUB_ROLES.map(role => (
+                              <SelectItem key={role.value} value={role.value} className="text-[10px] font-bold">
+                                {role.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+
                       <Button
                         variant="ghost"
                         size="icon"
@@ -171,6 +207,7 @@ export default function AdminCustomers() {
               ))
             )}
           </tbody>
+
         </table>
       </div>
 

@@ -30,11 +30,11 @@ export const CreateDeliveryOrderSchema = z.object({
   serviceType: DeliveryServiceType,
   pickupAddress: z.string().min(1),
   dropoffAddress: z.string().min(1),
-  packageType: PackageType.optional(),
-  courierService: CourierService.optional(),
+  packageType: z.union([PackageType, z.string()]).optional(),
+  courierService: z.union([CourierService, z.string()]).optional(),
   description: z.string().optional(),
   notes: z.string().optional(),
-});
+}).passthrough();
 
 export const CreateCarServiceOrderSchema = z.object({
   category: z.literal("car_service"),
@@ -43,7 +43,7 @@ export const CreateCarServiceOrderSchema = z.object({
   carLocation: z.string().min(1),
   description: z.string().optional(),
   notes: z.string().optional(),
-});
+}).passthrough();
 
 export const CreateOrderSchema = z.discriminatedUnion("category", [
   CreateDeliveryOrderSchema,
@@ -128,10 +128,34 @@ export const UpdateAgentLocationSchema = z.object({
 
 export const AdminUpdateRoleSchema = z.object({
   role: UserRole,
+  adminRole: z.string().optional().nullable(),
 });
 
 export const AdminApproveAgentSchema = z.object({
-  approved: z.boolean(),
+  status: z.enum(["approved", "rejected"]),
+  rejectionReason: z.string().optional(),
+});
+
+export const ApplyAgentSchema = z.object({
+  idNumber: z.string().min(1),
+  bio: z.string().min(10),
+  licenseImageUrl: z.string().url(),
+  idImageUrl: z.string().url(),
+  vehicle: z.object({
+    make: z.string().min(1),
+    model: z.string().min(1),
+    year: z.string().optional(),
+    plate: z.string().min(1),
+    registrationImageUrl: z.string().url(),
+    insuranceImageUrl: z.string().url(),
+    carImageUrl: z.string().url(),
+  }).optional(),
+});
+
+export const OrderInspectionSchema = z.object({
+  type: z.enum(["pickup", "dropoff"]),
+  photos: z.array(z.string().url()).min(1, "At least one photo is required"),
+  notes: z.string().optional(),
 });
 
 export const AdminAssignAgentSchema = z.object({
@@ -150,3 +174,27 @@ export type MessageResponse = {
   createdAt: string;
   sender: { id: string; name: string; email: string; image: string | null; role: string };
 };
+
+export const UpdateSubscriptionPlanSchema = z.object({
+  name: z.string().min(1),
+  category: z.enum(["delivery", "car"]),
+  price: z.number().min(0),
+  interval: z.string().min(1),
+  features: z.array(z.string()),
+  isPopular: z.boolean().default(false),
+  stripePriceId: z.string().optional(),
+});
+
+export const UpdateBusinessTierSchema = z.object({
+  plan: z.string().min(1),
+  volume: z.string().min(1),
+  price: z.number().min(0),
+  interval: z.string().min(1),
+});
+
+export const UpdateServiceFeeSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+  baseFee: z.number().min(0),
+  serviceType: z.string().optional(),
+});

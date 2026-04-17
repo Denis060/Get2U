@@ -35,4 +35,5 @@ studio.log
 .DS_Store
 
 # Prisma generated files (bunx prisma generate)
-/generated/prisma
+/generated/prisma.env
+.env

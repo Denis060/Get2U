@@ -6,6 +6,9 @@ export const authClient = createAuthClient({
   plugins: [emailOTPClient()],
   fetchOptions: {
     credentials: "include",
+    headers: {
+      "Bypass-Tunnel-Reminder": "true",
+    },
   },
 });
 
