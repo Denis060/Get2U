@@ -2,6 +2,7 @@ services:
   - type: web
     name: get2u-backend
     env: node
+    plan: free
     rootDir: backend
     buildCommand: npm install && npx prisma generate
     startCommand: npm run start
