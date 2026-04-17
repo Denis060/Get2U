@@ -18,15 +18,26 @@ import {
   CheckCircle2,
   Loader2,
   AlertCircle,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 const applySchema = z.object({
+  idType: z.enum(["drivers_license", "state_id", "passport"], {
+    required_error: "Please select an ID type",
+  }),
   idNumber: z.string().min(1, "ID Number is required"),
   bio: z.string().min(10, "Bio must be at least 10 characters"),
   licenseImageUrl: z.string().url("Please upload your license"),
@@ -67,6 +78,7 @@ export default function ApplyAgent() {
   } = useForm<ApplyFormValues>({
     resolver: zodResolver(applySchema),
     defaultValues: {
+      idType: undefined,
       bio: "",
       vehicle: { make: "", model: "", plate: "" },
     },
@@ -124,7 +136,7 @@ export default function ApplyAgent() {
   });
 
   const canGoNext = () => {
-    if (currentStep === 0) return watchValues.idNumber && watchValues.bio;
+    if (currentStep === 0) return watchValues.idType && watchValues.idNumber && watchValues.bio;
     if (currentStep === 1) return watchValues.vehicle.make && watchValues.vehicle.model && watchValues.vehicle.plate;
     if (currentStep === 2) return (
       watchValues.licenseImageUrl && 
@@ -224,14 +236,37 @@ export default function ApplyAgent() {
                  <AlertCircle className="h-5 w-5 shrink-0 text-orange-400" />
                  <p>Your ID Number must match exactly with the documentation you upload later.</p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="idNumber">ID / Passport Number</Label>
-                <Input
-                  id="idNumber"
-                  placeholder="Enter your government ID number"
-                  {...register("idNumber")}
-                  className="h-12"
-                />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Identification Type</Label>
+                  <Select 
+                    onValueChange={(v) => setValue("idType", v as any, { shouldValidate: true })}
+                    value={watchValues.idType}
+                  >
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Select ID Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="drivers_license">Driver's License</SelectItem>
+                      <SelectItem value="state_id">State ID Card</SelectItem>
+                      <SelectItem value="passport">Intl. Passport</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.idType && <p className="text-xs text-destructive">{errors.idType.message}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="idNumber">
+                    {watchValues.idType === "passport" ? "Passport Number" : "ID Number"}
+                  </Label>
+                  <Input
+                    id="idNumber"
+                    placeholder={watchValues.idType === "passport" ? "e.g. A1234567" : "Enter government ID number"}
+                    {...register("idNumber")}
+                    className="h-12"
+                  />
+                  {errors.idNumber && <p className="text-xs text-destructive">{errors.idNumber.message}</p>}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="bio">Professional Bio</Label>
@@ -241,6 +276,7 @@ export default function ApplyAgent() {
                   className="min-h-[150px] resize-none"
                   {...register("bio")}
                 />
+                {errors.bio && <p className="text-xs text-destructive">{errors.bio.message}</p>}
               </div>
             </motion.div>
           )}
@@ -361,23 +397,58 @@ export default function ApplyAgent() {
               animate={{ opacity: 1 }}
               className="space-y-6"
             >
-              <div className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm">
-                 <h3 className="font-bricolage font-bold flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-orange-500" />
-                    Review Application
-                 </h3>
-                 <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                       <p className="text-muted-foreground">ID Number</p>
-                       <p className="font-medium">{watchValues.idNumber}</p>
+              <div className="rounded-2xl border border-border bg-card p-6 space-y-6 shadow-sm relative overflow-hidden">
+                 <div className="flex items-center justify-between">
+                    <h3 className="font-bricolage font-bold flex items-center gap-2">
+                       <CheckCircle2 className="h-4 w-4 text-orange-500" />
+                       Review Application
+                    </h3>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-xs h-7 gap-1.5 text-muted-foreground hover:text-primary"
+                      onClick={() => setCurrentStep(0)}
+                    >
+                      <Pencil className="h-3 w-3" /> Edit All
+                    </Button>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-6 text-sm">
+                    <div className="relative group">
+                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Identity</p>
+                       <p className="font-medium capitalize">{watchValues.idType?.replace('_', ' ')}</p>
+                       <p className="text-xs text-muted-foreground font-mono mt-1">#{watchValues.idNumber}</p>
+                       <button onClick={() => setCurrentStep(0)} className="absolute -right-2 top-0 opacity-0 group-hover:opacity-100 p-1 text-primary"><Pencil className="h-3 w-3" /></button>
                     </div>
-                    <div>
-                       <p className="text-muted-foreground">Vehicle</p>
-                       <p className="font-medium">{watchValues.vehicle.year} {watchValues.vehicle.make} {watchValues.vehicle.model}</p>
+                    <div className="relative group">
+                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Vehicle</p>
+                       <p className="font-medium">{watchValues.vehicle.make} {watchValues.vehicle.model}</p>
+                       <p className="text-xs text-muted-foreground mt-1">{watchValues.vehicle.plate}</p>
+                       <button onClick={() => setCurrentStep(1)} className="absolute -right-2 top-0 opacity-0 group-hover:opacity-100 p-1 text-primary"><Pencil className="h-3 w-3" /></button>
                     </div>
-                    <div className="col-span-2">
-                       <p className="text-muted-foreground">Bio</p>
-                       <p className="line-clamp-3 italic">"{watchValues.bio}"</p>
+                    <div className="col-span-2 relative group">
+                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Personal Bio</p>
+                       <p className="line-clamp-3 italic text-muted-foreground">"{watchValues.bio}"</p>
+                       <button onClick={() => setCurrentStep(0)} className="absolute -right-2 top-0 opacity-0 group-hover:opacity-100 p-1 text-primary"><Pencil className="h-3 w-3" /></button>
+                    </div>
+                    <div className="col-span-2 relative group">
+                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Documents Uploaded</p>
+                       <div className="flex gap-2 mt-2">
+                          {[
+                            watchValues.licenseImageUrl, 
+                            watchValues.idImageUrl, 
+                            watchValues.vehicle.registrationImageUrl
+                          ].map((url, i) => (
+                            <div key={i} className="h-10 w-10 rounded-lg bg-muted border border-border overflow-hidden">
+                               <img src={url} className="h-full w-full object-cover" />
+                            </div>
+                          ))}
+                          <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-orange-500/10 text-orange-500 text-[10px] font-bold">
+                             +2
+                          </div>
+                       </div>
+                       <button onClick={() => setCurrentStep(2)} className="absolute -right-2 top-0 opacity-0 group-hover:opacity-100 p-1 text-primary"><Pencil className="h-3 w-3" /></button>
                     </div>
                  </div>
               </div>
@@ -405,6 +476,17 @@ export default function ApplyAgent() {
             <Button 
                type="submit" 
                disabled={applyMutation.isPending} 
+               onClick={() => {
+                 // Manual error check helps find hidden validation failures
+                 const formErrors = Object.keys(errors);
+                 if (formErrors.length > 0) {
+                    toast({
+                      title: "Form incomplete",
+                      description: "Please check all steps for missing information.",
+                      variant: "destructive"
+                    });
+                 }
+               }}
                className="h-12 flex-1 bg-gradient-to-r from-orange-500 to-orange-600 border-none shadow-orange-500/20 shadow-lg text-white font-bold"
             >
               {applyMutation.isPending ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <ShieldCheck className="mr-2 h-4 w-4" />}

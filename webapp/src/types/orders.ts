@@ -56,6 +56,13 @@ export type UserProfile = {
   subscriptionPlanId: string | null;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
+  agentProfile: {
+    id: string;
+    userId: string;
+    applicationStatus: "pending" | "approved" | "rejected";
+    rejectionReason: string | null;
+    bio: string | null;
+  } | null;
 };
 
 export const SERVICE_TYPES = {

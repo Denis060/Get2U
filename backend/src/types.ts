@@ -137,6 +137,7 @@ export const AdminApproveAgentSchema = z.object({
 });
 
 export const ApplyAgentSchema = z.object({
+  idType: z.enum(["drivers_license", "state_id", "passport"]),
   idNumber: z.string().min(1),
   bio: z.string().min(10),
   licenseImageUrl: z.string().url(),

@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
-import { signOut, useSession } from "@/lib/auth-client";
+import { authClient, signOut, useSession } from "@/lib/auth-client";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import {
   User,
   Mail,
@@ -25,6 +26,7 @@ import {
   FileBadge,
   LayoutDashboard,
   Star,
+  UserPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -497,11 +499,31 @@ export default function Profile() {
             <div className="border-t border-border/30" />
           </>
         )}
-        <SettingsRow
-          icon={<ArrowLeftRight className="h-4 w-4 text-emerald-400" />}
-          label={profile?.role === "agent" ? "Switch to Customer Mode" : "Switch to Agent Mode"}
-          onClick={() => switchRole.mutate(profile?.role === "agent" ? "customer" : "agent")}
-        />
+        {profile?.role === "agent" ? (
+          <SettingsRow
+            icon={<ArrowLeftRight className="h-4 w-4 text-emerald-400" />}
+            label="Switch to Customer Mode"
+            onClick={() => switchRole.mutate("customer")}
+          />
+        ) : profile?.agentProfile?.applicationStatus === "approved" || profile?.adminRole ? (
+          <SettingsRow
+            icon={<ArrowLeftRight className="h-4 w-4 text-emerald-400" />}
+            label="Switch to Agent Mode"
+            onClick={() => switchRole.mutate("agent")}
+          />
+        ) : profile?.agentProfile?.applicationStatus === "pending" ? (
+          <SettingsRow
+            icon={<Shield className="h-4 w-4 text-amber-400" />}
+            label="Application Pending"
+            chevron={false}
+          />
+        ) : (
+          <SettingsRow
+            icon={<UserPlus className="h-4 w-4 text-primary" />}
+            label="Become an Agent"
+            onClick={() => navigate("/agent/apply")}
+          />
+        )}
         {profile?.adminRole && profile?.role !== "admin" && (
           <>
             <div className="border-t border-border/30" />

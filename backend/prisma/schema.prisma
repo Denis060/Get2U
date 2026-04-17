@@ -96,6 +96,8 @@ model AgentProfile {
   idImageUrl        String?
   licenseImageUrl   String?
   rejectionReason   String?
+  idType            String?
+  idNumber          String?
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 

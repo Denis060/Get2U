@@ -135,12 +135,16 @@ usersRouter.post("/me/apply-agent", zValidator("json", ApplyAgentSchema), async 
     create: {
       userId: user.id,
       bio: body.bio,
+      idType: body.idType,
+      idNumber: body.idNumber,
       licenseImageUrl: body.licenseImageUrl,
       idImageUrl: body.idImageUrl,
       applicationStatus: "pending",
     },
     update: {
       bio: body.bio,
+      idType: body.idType,
+      idNumber: body.idNumber,
       licenseImageUrl: body.licenseImageUrl,
       idImageUrl: body.idImageUrl,
       applicationStatus: "pending",
