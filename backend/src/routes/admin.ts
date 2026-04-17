@@ -57,6 +57,7 @@ adminRouter.get("/stats", async (c) => {
     activeOrders,
     completedOrders,
     totalMessages,
+    pendingVettings,
   ] = await prisma.$transaction([
     prisma.user.count({ where: { role: "customer" } }),
     prisma.user.count({ where: { role: "agent" } }),
@@ -65,6 +66,7 @@ adminRouter.get("/stats", async (c) => {
     prisma.order.count({ where: { status: { in: ["accepted", "in_progress"] } } }),
     prisma.order.count({ where: { status: "completed" } }),
     prisma.message.count(),
+    prisma.agentProfile.count({ where: { applicationStatus: "pending" } }),
   ]);
 
   return c.json({
@@ -76,6 +78,7 @@ adminRouter.get("/stats", async (c) => {
       activeOrders,
       completedOrders,
       totalMessages,
+      pendingVettings: pendingVettings,
     },
   });
 });

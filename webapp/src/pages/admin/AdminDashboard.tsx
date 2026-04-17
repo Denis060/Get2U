@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { motion } from "framer-motion";
-import { Users, UserCheck, Package, Clock, Truck, CheckCircle, TrendingUp, BarChart3, PieChart as PieChartIcon } from "lucide-react";
+import { Users, UserCheck, Package, Clock, Truck, CheckCircle, TrendingUp, BarChart3, PieChart as PieChartIcon, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { STATUS_COLORS } from "@/types/orders";
+import { cn } from "@/lib/utils";
 import {
   AreaChart,
   Area,
@@ -27,6 +28,7 @@ type AdminStats = {
   activeOrders: number;
   completedOrders: number;
   totalMessages: number;
+  pendingVettings: number;
 };
 
 type AnalyticsData = {
@@ -48,9 +50,9 @@ const STAT_CARDS = [
   { key: "totalCustomers", label: "Total Customers", icon: Users, color: "text-blue-500", bg: "bg-blue-50" },
   { key: "totalAgents", label: "Total Agents", icon: UserCheck, color: "text-emerald-500", bg: "bg-emerald-50" },
   { key: "totalOrders", label: "Total Orders", icon: Package, color: "text-primary", bg: "bg-primary/10" },
-  { key: "pendingOrders", label: "Pending Orders", icon: Clock, color: "text-yellow-500", bg: "bg-yellow-50" },
-  { key: "activeOrders", label: "Active Orders", icon: Truck, color: "text-primary", bg: "bg-orange-50" },
-  { key: "completedOrders", label: "Completed", icon: CheckCircle, color: "text-emerald-500", bg: "bg-emerald-50" },
+  { key: "pendingOrders", label: "Pending Orders", icon: Clock, color: "text-amber-500", bg: "bg-amber-50", link: "/admin/orders?status=pending" },
+  { key: "activeOrders", label: "Active Orders", icon: Truck, color: "text-primary", bg: "bg-orange-50", link: "/admin/orders?status=active" },
+  { key: "pendingVettings", label: "Pending Vetting", icon: ShieldCheck, color: "text-red-500", bg: "bg-red-50", link: "/admin/agents", pulse: true },
 ] as const;
 
 const CHART_COLORS = ["#f97316", "#3b82f6", "#10b981", "#8b5cf6", "#ef4444", "#f59e0b"];
@@ -90,11 +92,17 @@ export default function AdminDashboard() {
         animate="show"
         className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6"
       >
-        {STAT_CARDS.map(({ key, label, icon: Icon, color, bg }) => (
+        {STAT_CARDS.map(({ key, label, icon: Icon, color, bg, link, pulse }) => (
           <motion.div key={key} variants={item}>
-            <div className="rounded-2xl border border-border/40 bg-white p-5 shadow-sm transition-all hover:shadow-md">
-              <div className={`mb-3 inline-flex rounded-xl p-2.5 ${bg}`}>
-                <Icon className={`h-5 w-5 ${color}`} />
+            <div 
+              onClick={() => link && navigate(link)}
+              className={cn(
+                "group cursor-pointer rounded-2xl border border-border/40 bg-white p-5 shadow-sm transition-all hover:shadow-md hover:border-primary/20",
+                pulse && (stats?.[key as keyof AdminStats] ?? 0) > 0 && "animate-pulse border-red-500/30 ring-1 ring-red-500/10"
+              )}
+            >
+              <div className={cn("mb-3 inline-flex rounded-xl p-2.5 transition-colors group-hover:scale-110", bg)}>
+                <Icon className={cn("h-5 w-5", color)} />
               </div>
               <div className="text-2xl font-bold text-foreground">
                 {statsLoading ? (
