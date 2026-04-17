@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSession } from "@/lib/auth-client";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { motion } from "framer-motion";
-import { Mail, Package, Truck, Car, ChevronRight, Inbox, Moon, Sun } from "lucide-react";
+import { Mail, Package, Truck, Car, ChevronRight, Inbox, Moon, Sun, Megaphone, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import StatusBadge from "@/components/StatusBadge";
@@ -33,6 +34,17 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const isMobile = useIsMobile();
+  const [dismissedAnns, setDismissedAnns] = useState<string[]>([]);
+
+  const { data: announcements = [] } = useQuery({
+    queryKey: ["announcements"],
+    queryFn: () => api.get<any[]>("/api/config/announcements"),
+  });
+
+  const activeAnn = announcements.find(a => 
+    !dismissedAnns.includes(a.id) && 
+    (a.target === "all" || a.target === session?.user?.role)
+  );
 
   const firstName = session?.user?.name?.split(" ")[0] ?? "there";
   const user = session?.user;
@@ -80,6 +92,33 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Announcement Banner */}
+      {activeAnn && (
+        <motion.div 
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          className={cn(isMobile ? "mx-4 mb-4" : "mb-6")}
+        >
+           <div className="relative overflow-hidden rounded-2xl bg-orange-500/10 border border-orange-500/20 p-4 flex items-start gap-4">
+              <div className="p-2 bg-orange-500 rounded-xl text-white">
+                <Megaphone size={18} />
+              </div>
+              <div className="flex-1 pr-8">
+                 <h4 className="text-sm font-bold text-orange-600 leading-none">{activeAnn.title}</h4>
+                 <p className="mt-1 text-xs text-orange-800/80 leading-relaxed font-medium">
+                   {activeAnn.content}
+                 </p>
+              </div>
+              <button 
+                onClick={() => setDismissedAnns([...dismissedAnns, activeAnn.id])}
+                className="absolute top-4 right-4 text-orange-500/50 hover:text-orange-600 transition-colors"
+              >
+                <X size={16} />
+              </button>
+           </div>
+        </motion.div>
+      )}
 
       {/* Hero Banner */}
       <div className={cn(isMobile ? "mx-4 mb-6" : "mb-8")}>

@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { motion } from "framer-motion";
-import { Users, UserCheck, Package, Clock, Truck, CheckCircle, TrendingUp, BarChart3, PieChart as PieChartIcon, ShieldCheck } from "lucide-react";
+import { Users, UserCheck, Package, Clock, Truck, CheckCircle, TrendingUp, BarChart3, PieChart as PieChartIcon, ShieldCheck, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { STATUS_COLORS } from "@/types/orders";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   AreaChart,
   Area,
@@ -29,6 +30,16 @@ type AdminStats = {
   completedOrders: number;
   totalMessages: number;
   pendingVettings: number;
+  totalEarnings: number;
+};
+
+type TopAgent = {
+  id: string;
+  name: string;
+  email: string;
+  rating: number;
+  completedJobs: number;
+  image: string | null;
 };
 
 type AnalyticsData = {
@@ -53,6 +64,7 @@ const STAT_CARDS = [
   { key: "pendingOrders", label: "Pending Orders", icon: Clock, color: "text-amber-500", bg: "bg-amber-50", link: "/admin/orders?status=pending" },
   { key: "activeOrders", label: "Active Orders", icon: Truck, color: "text-primary", bg: "bg-orange-50", link: "/admin/orders?status=active" },
   { key: "pendingVettings", label: "Pending Vetting", icon: ShieldCheck, color: "text-red-500", bg: "bg-red-50", link: "/admin/agents", pulse: true },
+  { key: "totalEarnings", label: "Total Revenue", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50", link: "/admin/orders" },
 ] as const;
 
 const CHART_COLORS = ["#f97316", "#3b82f6", "#10b981", "#8b5cf6", "#ef4444", "#f59e0b"];
@@ -71,6 +83,11 @@ export default function AdminDashboard() {
   const { data: analytics, isLoading: analyticsLoading } = useQuery({
     queryKey: ["admin", "analytics"],
     queryFn: () => api.get<AnalyticsData>("/api/admin/analytics"),
+  });
+
+  const { data: topAgents = [], isLoading: topAgentsLoading } = useQuery({
+    queryKey: ["admin", "top-agents"],
+    queryFn: () => api.get<TopAgent[]>("/api/admin/top-agents"),
   });
 
   const { data: recentOrders = [], isLoading: ordersLoading } = useQuery({
@@ -108,7 +125,9 @@ export default function AdminDashboard() {
                 {statsLoading ? (
                   <span className="inline-block h-8 w-12 animate-pulse rounded bg-muted" />
                 ) : (
-                  stats?.[key as keyof AdminStats] ?? 0
+                  key === "totalEarnings" 
+                    ? `$${(stats?.[key as keyof AdminStats] ?? 0).toLocaleString()}`
+                    : stats?.[key as keyof AdminStats] ?? 0
                 )}
               </div>
               <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">{label}</p>
@@ -231,15 +250,61 @@ export default function AdminDashboard() {
         </motion.div>
       </div>
 
-      {/* Recent Orders */}
-      <div className="rounded-2xl border border-border/40 bg-white shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between border-b border-border/40 px-6 py-5 bg-muted/5">
-          <h3 className="font-bold text-foreground">Recent Activity</h3>
-          <Button variant="outline" size="sm" onClick={() => navigate("/admin/orders")} className="h-8 rounded-lg text-xs font-semibold">
-            Manage All Orders
-          </Button>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Top Performing Agents */}
+        <div className="rounded-2xl border border-border/40 bg-white shadow-sm overflow-hidden">
+           <div className="flex items-center justify-between border-b border-border/40 px-6 py-5 bg-muted/5">
+              <h3 className="font-bold text-foreground">Top Performing Agents</h3>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/admin/agents")} className="text-xs text-primary font-bold">Manage Agents</Button>
+           </div>
+           <div className="p-4 space-y-4">
+              {topAgentsLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center justify-between p-2">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+                      <div className="space-y-2">
+                        <div className="h-3 w-24 rounded bg-muted animate-pulse" />
+                        <div className="h-2 w-16 rounded bg-muted animate-pulse" />
+                      </div>
+                    </div>
+                    <div className="h-6 w-12 rounded bg-muted animate-pulse" />
+                  </div>
+                ))
+              ) : topAgents.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground text-xs italic">No job data yet</div>
+              ) : (
+                topAgents.map((agent) => (
+                  <div key={agent.id} className="flex items-center justify-between p-3 rounded-xl border border-transparent hover:border-border/50 hover:bg-muted/5 transition-all">
+                     <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10 border border-primary/10">
+                           <AvatarImage src={agent.image || ""} />
+                           <AvatarFallback className="bg-primary/5 text-primary text-xs font-bold">{agent.name.split(" ").map(n => n[0]).join("")}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                           <p className="text-sm font-bold text-foreground">{agent.name}</p>
+                           <p className="text-[10px] text-muted-foreground">{agent.completedJobs} Jobs Completed</p>
+                        </div>
+                     </div>
+                     <div className="flex items-center gap-1.5 bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full border border-amber-500/20">
+                        <Star size={12} className="fill-current" />
+                        <span className="text-xs font-bold">{agent.rating.toFixed(1)}</span>
+                     </div>
+                  </div>
+                ))
+              )}
+           </div>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Recent Orders Overview */}
+        <div className="rounded-2xl border border-border/40 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between border-b border-border/40 px-6 py-5 bg-muted/5">
+            <h3 className="font-bold text-foreground">Recent Activity</h3>
+            <Button variant="outline" size="sm" onClick={() => navigate("/admin/orders")} className="h-8 rounded-lg text-xs font-semibold">
+              Manage All Orders
+            </Button>
+          </div>
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border/20 text-muted-foreground/80 bg-muted/5">

@@ -89,6 +89,26 @@ export default function AdminPricing() {
     },
   });
 
+  const tierMutation = useMutation({
+    mutationFn: (values: Partial<BusinessTier>) => 
+      values.id ? api.patch(`/api/admin/business-tiers/${values.id}`, values) : api.post("/api/admin/business-tiers", values),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["public-pricing"] });
+      setEditingTier(null);
+      toast({ title: "Business tier saved" });
+    },
+  });
+
+  const feeMutation = useMutation({
+    mutationFn: (values: Partial<ServiceFee>) => 
+      values.id ? api.patch(`/api/admin/service-fees/${values.id}`, values) : api.post("/api/admin/service-fees", values),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["public-pricing"] });
+      setEditingFee(null);
+      toast({ title: "Service fee updated" });
+    },
+  });
+
   if (isLoading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   return (
@@ -235,8 +255,8 @@ export default function AdminPricing() {
                         <p className="text-xs text-muted-foreground">{tier.volume}</p>
                       </div>
                       <div className="flex items-center gap-4 text-right">
-                        <span className="font-bold text-primary">${tier.price}</span>
-                        <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 h-8 w-8 p-0"><Edit2 className="h-3 w-3" /></Button>
+                         <span className="font-bold text-primary">${tier.price}</span>
+                        <Button variant="ghost" size="sm" onClick={() => setEditingTier(tier)} className="opacity-0 group-hover:opacity-100 h-8 w-8 p-0"><Edit2 className="h-3 w-3" /></Button>
                       </div>
                    </div>
                  ))}
@@ -268,8 +288,8 @@ export default function AdminPricing() {
                         {fee.description && <p className="text-xs text-muted-foreground">{fee.description}</p>}
                       </div>
                       <div className="flex items-center gap-4 text-right">
-                        <span className="font-bold text-emerald-500">${fee.baseFee}</span>
-                        <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 h-8 w-8 p-0"><Edit2 className="h-3 w-3" /></Button>
+                         <span className="font-bold text-emerald-500">${fee.baseFee}</span>
+                        <Button variant="ghost" size="sm" onClick={() => setEditingFee(fee)} className="opacity-0 group-hover:opacity-100 h-8 w-8 p-0"><Edit2 className="h-3 w-3" /></Button>
                       </div>
                    </div>
                  ))}
@@ -282,6 +302,64 @@ export default function AdminPricing() {
           </div>
         </section>
       </div>
+      {editingTier && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <Card className="w-full max-w-md shadow-2xl">
+            <CardHeader>
+              <CardTitle>{editingTier.id ? "Edit Tier" : "Create New Tier"}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-2">
+                <Label>Plan Name</Label>
+                <Input value={editingTier.plan} onChange={(e) => setEditingTier({ ...editingTier, plan: e.target.value })} placeholder="e.g. Enterprise" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Volume Label</Label>
+                <Input value={editingTier.volume} onChange={(e) => setEditingTier({ ...editingTier, volume: e.target.value })} placeholder="e.g. 50-100 pkgs/mo" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Price ($)</Label>
+                <Input type="number" value={editingTier.price} onChange={(e) => setEditingTier({ ...editingTier, price: Number(e.target.value) })} />
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-between border-t pt-4">
+              <Button variant="ghost" onClick={() => setEditingTier(null)}>Cancel</Button>
+              <Button onClick={() => tierMutation.mutate(editingTier)} disabled={tierMutation.isPending}>
+                 {tierMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                 Save Tier
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+
+      {editingFee && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <Card className="w-full max-w-md shadow-2xl">
+            <CardHeader>
+              <CardTitle>Edit Service Fee</CardTitle>
+              <CardDescription>Adjust the flat fee for pay-as-you-go requests.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-2">
+                <Label>Fee Name</Label>
+                <Input value={editingFee.name} readOnly className="bg-muted" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Base Fee ($)</Label>
+                <Input type="number" value={editingFee.baseFee} onChange={(e) => setEditingFee({ ...editingFee, baseFee: Number(e.target.value) })} />
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-between border-t pt-4">
+              <Button variant="ghost" onClick={() => setEditingFee(null)}>Cancel</Button>
+              <Button onClick={() => feeMutation.mutate(editingFee)} disabled={feeMutation.isPending}>
+                 {feeMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                 Update Fee
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

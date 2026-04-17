@@ -58,6 +58,7 @@ adminRouter.get("/stats", async (c) => {
     completedOrders,
     totalMessages,
     pendingVettings,
+    totalEarnings,
   ] = await prisma.$transaction([
     prisma.user.count({ where: { role: "customer" } }),
     prisma.user.count({ where: { role: "agent" } }),
@@ -67,6 +68,10 @@ adminRouter.get("/stats", async (c) => {
     prisma.order.count({ where: { status: "completed" } }),
     prisma.message.count(),
     prisma.agentProfile.count({ where: { applicationStatus: "pending" } }),
+    prisma.order.aggregate({
+      where: { status: "completed" },
+      _sum: { finalPrice: true },
+    }),
   ]);
 
   return c.json({
@@ -79,8 +84,38 @@ adminRouter.get("/stats", async (c) => {
       completedOrders,
       totalMessages,
       pendingVettings: pendingVettings,
+      totalEarnings: totalEarnings._sum.finalPrice || 0,
     },
   });
+});
+
+// GET /api/admin/top-agents — Get highest performing agents
+adminRouter.get("/top-agents", async (c) => {
+  const topAgents = await prisma.user.findMany({
+    where: { role: "agent" },
+    include: {
+      agentProfile: true,
+      _count: {
+        select: { ordersAsAgent: { where: { status: "completed" } } }
+      }
+    },
+    orderBy: [
+      { agentProfile: { rating: "desc" } },
+      { ordersAsAgent: { _count: "desc" } }
+    ],
+    take: 5
+  });
+
+  const result = topAgents.map(a => ({
+    id: a.id,
+    name: a.name,
+    email: a.email,
+    rating: a.agentProfile?.rating || 0,
+    completedJobs: a._count.ordersAsAgent,
+    image: a.image
+  }));
+
+  return c.json({ data: result });
 });
 
 // GET /api/admin/analytics — Detailed historical data for charts

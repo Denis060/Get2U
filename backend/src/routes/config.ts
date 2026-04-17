@@ -20,4 +20,13 @@ configRouter.get("/pricing", async (c) => {
   });
 });
 
+// GET /api/config/announcements - Fetch active announcements
+configRouter.get("/announcements", async (c) => {
+  const announcements = await prisma.announcement.findMany({
+    where: { active: true },
+    orderBy: { createdAt: "desc" },
+  });
+  return c.json({ data: announcements });
+});
+
 export { configRouter };
