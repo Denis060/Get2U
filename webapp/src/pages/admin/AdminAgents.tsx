@@ -102,19 +102,43 @@ function VettingDialog({
               <UserIcon className="h-4 w-4" />
               1. Identity Verification
             </h3>
+            
+            <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-xl border border-border/50">
+               <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">ID Type</p>
+                  <p className="font-bold text-sm capitalize">{profile.idType?.replace('_', ' ') || "Not specified"}</p>
+               </div>
+               <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">ID Number</p>
+                  <p className="font-mono font-bold text-sm">{profile.idNumber || "None"}</p>
+               </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">ID Document / Passport</p>
                 <div className="aspect-video rounded-lg border overflow-hidden bg-muted group relative">
-                   <img src={profile.idImageUrl || ""} className="w-full h-full object-cover" />
-                   <a href={profile.idImageUrl || ""} target="_blank" className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity text-xs font-bold">VIEW FULL</a>
+                   {profile.idImageUrl ? (
+                     <>
+                       <img src={profile.idImageUrl} className="w-full h-full object-cover" />
+                       <a href={profile.idImageUrl} target="_blank" className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity text-xs font-bold">VIEW FULL</a>
+                     </>
+                   ) : (
+                     <div className="flex items-center justify-center h-full text-muted-foreground text-xs italic">No image</div>
+                   )}
                 </div>
               </div>
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Driver's License</p>
                 <div className="aspect-video rounded-lg border overflow-hidden bg-muted group relative">
-                   <img src={profile.licenseImageUrl || ""} className="w-full h-full object-cover" />
-                   <a href={profile.licenseImageUrl || ""} target="_blank" className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity text-xs font-bold">VIEW FULL</a>
+                   {profile.licenseImageUrl ? (
+                     <>
+                       <img src={profile.licenseImageUrl} className="w-full h-full object-cover" />
+                       <a href={profile.licenseImageUrl} target="_blank" className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity text-xs font-bold">VIEW FULL</a>
+                     </>
+                   ) : (
+                     <div className="flex items-center justify-center h-full text-muted-foreground text-xs italic">No image</div>
+                   )}
                 </div>
               </div>
             </div>
