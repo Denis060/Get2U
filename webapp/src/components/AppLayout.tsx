@@ -105,9 +105,6 @@ export default function AppLayout() {
                   <DropdownMenuItem onClick={() => navigate("/profile")}>
                     <User className="mr-2 h-4 w-4" />Profile
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/agent")}>
-                    <ArrowLeftRight className="mr-2 h-4 w-4" />Switch to Agent
-                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />Sign Out

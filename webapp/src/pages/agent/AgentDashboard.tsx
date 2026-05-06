@@ -134,12 +134,12 @@ export default function AgentDashboard() {
         <div className="mb-6 rounded-full bg-orange-500/10 p-5 text-orange-500">
           <ClipboardCheck className="h-12 w-16" />
         </div>
-        <h1 className="text-2xl font-bold mb-3">Vetting Required</h1>
+        <h1 className="text-2xl font-bold mb-3">Agent Access Required</h1>
         <p className="max-w-md text-muted-foreground mb-8">
-          To start working as an agent on Get2U, you must first complete our formal vetting process.
+          Agent access is granted by the Get2U team. Please contact an administrator to be set up as an agent.
         </p>
-        <Button onClick={() => navigate("/agent/apply")} className="w-full max-w-xs h-12 text-md">
-          Start Application
+        <Button variant="outline" onClick={() => navigate("/dashboard")} className="w-full max-w-xs h-12 text-md">
+          Return to Customer Dashboard
         </Button>
       </div>
     );
@@ -181,8 +181,8 @@ export default function AgentDashboard() {
             <p className="italic text-red-100">{agentProfile.rejectionReason}</p>
           </div>
         )}
-        <Button onClick={() => navigate("/agent/apply")} className="w-full max-w-xs h-12 text-md">
-          Revise & Re-apply
+        <Button variant="outline" onClick={() => navigate("/dashboard")} className="w-full max-w-xs h-12 text-md">
+          Return to Customer Dashboard
         </Button>
       </div>
     );

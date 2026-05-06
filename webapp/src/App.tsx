@@ -21,7 +21,6 @@ import AgentDashboard from "./pages/agent/AgentDashboard";
 import MyJobs from "./pages/agent/MyJobs";
 import Earnings from "./pages/agent/Earnings";
 import AgentJobDetail from "./pages/agent/AgentJobDetail";
-import ApplyAgent from "./pages/agent/ApplyAgent";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminCustomers from "./pages/admin/AdminCustomers";
@@ -85,7 +84,6 @@ const App = () => (
             }
           >
             <Route path="/agent" element={<AgentDashboard />} />
-            <Route path="/agent/apply" element={<ApplyAgent />} />
             <Route path="/agent/my-jobs" element={<MyJobs />} />
             <Route path="/agent/earnings" element={<Earnings />} />
             <Route path="/agent/jobs/:id" element={<AgentJobDetail />} />

@@ -486,55 +486,47 @@ export default function Profile() {
         />
       </div>
 
-      {/* Work section */}
-      <SectionHeader label="Work" />
-      <div className={cn("overflow-hidden rounded-2xl border border-border/40 bg-card", isMobile ? "mx-4" : "")}>
-        {profile?.role === "admin" && (
-          <>
-            <SettingsRow
-              icon={<LayoutDashboard className="h-4 w-4 text-primary" />}
-              label="Admin Dashboard"
-              onClick={() => navigate("/admin")}
-            />
-            <div className="border-t border-border/30" />
-          </>
-        )}
-        {profile?.role === "agent" ? (
-          <SettingsRow
-            icon={<ArrowLeftRight className="h-4 w-4 text-emerald-400" />}
-            label="Switch to Customer Mode"
-            onClick={() => switchRole.mutate("customer")}
-          />
-        ) : profile?.agentProfile?.applicationStatus === "approved" || profile?.adminRole ? (
-          <SettingsRow
-            icon={<ArrowLeftRight className="h-4 w-4 text-emerald-400" />}
-            label="Switch to Agent Mode"
-            onClick={() => switchRole.mutate("agent")}
-          />
-        ) : profile?.agentProfile?.applicationStatus === "pending" ? (
-          <SettingsRow
-            icon={<Shield className="h-4 w-4 text-amber-400" />}
-            label="Application Pending"
-            chevron={false}
-          />
-        ) : (
-          <SettingsRow
-            icon={<UserPlus className="h-4 w-4 text-primary" />}
-            label="Become an Agent"
-            onClick={() => navigate("/agent/apply")}
-          />
-        )}
-        {profile?.adminRole && profile?.role !== "admin" && (
-          <>
-            <div className="border-t border-border/30" />
-            <SettingsRow
-              icon={<Shield className="h-4 w-4 text-purple-400" />}
-              label="Switch to Admin Mode"
-              onClick={() => switchRole.mutate("admin")}
-            />
-          </>
-        )}
-      </div>
+      {/* Work section — only shown to admins or approved agents */}
+      {(profile?.role === "admin" || profile?.role === "agent" || profile?.agentProfile?.applicationStatus === "approved" || profile?.adminRole) && (
+        <>
+          <SectionHeader label="Work" />
+          <div className={cn("overflow-hidden rounded-2xl border border-border/40 bg-card", isMobile ? "mx-4" : "")}>
+            {profile?.role === "admin" && (
+              <>
+                <SettingsRow
+                  icon={<LayoutDashboard className="h-4 w-4 text-primary" />}
+                  label="Admin Dashboard"
+                  onClick={() => navigate("/admin")}
+                />
+                <div className="border-t border-border/30" />
+              </>
+            )}
+            {profile?.role === "agent" ? (
+              <SettingsRow
+                icon={<ArrowLeftRight className="h-4 w-4 text-emerald-400" />}
+                label="Switch to Customer Mode"
+                onClick={() => switchRole.mutate("customer")}
+              />
+            ) : profile?.agentProfile?.applicationStatus === "approved" || profile?.adminRole ? (
+              <SettingsRow
+                icon={<ArrowLeftRight className="h-4 w-4 text-emerald-400" />}
+                label="Switch to Agent Mode"
+                onClick={() => switchRole.mutate("agent")}
+              />
+            ) : null}
+            {profile?.adminRole && profile?.role !== "admin" && (
+              <>
+                <div className="border-t border-border/30" />
+                <SettingsRow
+                  icon={<Shield className="h-4 w-4 text-purple-400" />}
+                  label="Switch to Admin Mode"
+                  onClick={() => switchRole.mutate("admin")}
+                />
+              </>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Legal & Support */}
       <SectionHeader label="Legal & Support" />
