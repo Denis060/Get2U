@@ -61,7 +61,13 @@ export default function VerifyOtp() {
           if (isSignUp && name) {
             try { await api.patch("/api/me", { name }); } catch { /* non-critical */ }
           }
-          navigate("/dashboard");
+          // Route admins to admin dashboard, everyone else to customer dashboard
+          try {
+            const me = await api.get<{ role: string }>("/api/me");
+            navigate(me.role === "admin" ? "/admin" : "/dashboard");
+          } catch {
+            navigate("/dashboard");
+          }
         }
       } catch {
         setError("Something went wrong. Please try again.");
