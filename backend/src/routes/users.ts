@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../prisma";
 import { auth } from "../auth";
+import { env } from "../env";
 import { UpdateProfileSchema, UpdateUserRoleSchema, ApplyAgentSchema } from "../types";
 
 type AuthVariables = {
@@ -11,6 +12,11 @@ type AuthVariables = {
 
 const usersRouter = new Hono<{ Variables: AuthVariables }>();
 
+const SUPER_ADMIN_EMAILS = (env.SUPER_ADMIN_EMAILS ?? "")
+  .split(",")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
 // GET /api/me - Get current user profile
 usersRouter.get("/me", async (c) => {
   const user = c.get("user");
@@ -18,7 +24,7 @@ usersRouter.get("/me", async (c) => {
     return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
   }
 
-  const fullUser = await prisma.user.findUnique({
+  let fullUser = await prisma.user.findUnique({
     where: { id: user.id },
     include: {
       agentProfile: true,
@@ -28,6 +34,18 @@ usersRouter.get("/me", async (c) => {
 
   if (!fullUser) {
     return c.json({ error: { message: "User not found", code: "NOT_FOUND" } }, 404);
+  }
+
+  // Auto-promote any email in SUPER_ADMIN_EMAILS to super_admin (idempotent)
+  if (
+    SUPER_ADMIN_EMAILS.includes(fullUser.email.toLowerCase()) &&
+    (fullUser.role !== "admin" || fullUser.adminRole !== "super_admin")
+  ) {
+    fullUser = await prisma.user.update({
+      where: { id: fullUser.id },
+      data: { role: "admin", adminRole: "super_admin" },
+      include: { agentProfile: true, vehicles: true },
+    });
   }
 
   return c.json({

@@ -58,9 +58,9 @@ type RecentOrder = {
 };
 
 const STAT_CARDS = [
-  { key: "totalCustomers", label: "Total Customers", icon: Users, color: "text-blue-500", bg: "bg-blue-50" },
-  { key: "totalAgents", label: "Total Agents", icon: UserCheck, color: "text-emerald-500", bg: "bg-emerald-50" },
-  { key: "totalOrders", label: "Total Orders", icon: Package, color: "text-primary", bg: "bg-primary/10" },
+  { key: "totalCustomers", label: "Total Customers", icon: Users, color: "text-blue-500", bg: "bg-blue-50", link: "/admin/customers" },
+  { key: "totalAgents", label: "Total Agents", icon: UserCheck, color: "text-emerald-500", bg: "bg-emerald-50", link: "/admin/agents" },
+  { key: "totalOrders", label: "Total Orders", icon: Package, color: "text-primary", bg: "bg-primary/10", link: "/admin/orders?status=all" },
   { key: "pendingOrders", label: "Pending Orders", icon: Clock, color: "text-amber-500", bg: "bg-amber-50", link: "/admin/orders?status=pending" },
   { key: "activeOrders", label: "Active Orders", icon: Truck, color: "text-primary", bg: "bg-orange-50", link: "/admin/orders?status=active" },
   { key: "pendingVettings", label: "Pending Vetting", icon: ShieldCheck, color: "text-red-500", bg: "bg-red-50", link: "/admin/agents", pulse: true },
