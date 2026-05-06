@@ -147,8 +147,82 @@ export default function AdminOrders() {
         </Select>
       </div>
 
-      {/* Table */}
-      <div className="rounded-xl border border-border/60 bg-white shadow-sm overflow-x-auto">
+      {/* Mobile card list (< md) */}
+      <div className="md:hidden space-y-3">
+        {isLoading ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border/60 bg-white p-4 shadow-sm">
+              <span className="block h-24 w-full animate-pulse rounded bg-muted" />
+            </div>
+          ))
+        ) : filtered.length === 0 ? (
+          <div className="rounded-xl border border-border/60 bg-white p-8 text-center text-muted-foreground shadow-sm">
+            No orders found.
+          </div>
+        ) : (
+          filtered.map((order) => {
+            const s = STATUS_COLORS[order.status] ?? STATUS_COLORS["pending"];
+            const isMine = order.agent?.id === currentUserId;
+            return (
+              <div key={order.id} className="rounded-xl border border-border/60 bg-white p-4 shadow-sm space-y-3">
+                {/* Status + date */}
+                <div className="flex items-center justify-between">
+                  <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${s.bg} ${s.text}`}>
+                    {s.label}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(order.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                {/* Customer + service + id */}
+                <div className="space-y-1">
+                  <p className="font-medium">{order.customer?.name ?? "—"}</p>
+                  <p className="text-sm capitalize text-muted-foreground">
+                    {order.serviceType.replace(/_/g, " ")}
+                  </p>
+                  <p className="font-mono text-xs text-muted-foreground/70">
+                    {order.id.slice(0, 8)}…
+                  </p>
+                </div>
+                {/* Agent line */}
+                <div className="text-xs text-muted-foreground">
+                  Agent:{" "}
+                  {order.agent?.name ? (
+                    <span className="font-medium text-foreground">{order.agent.name}</span>
+                  ) : (
+                    <span className="italic">Unassigned</span>
+                  )}
+                </div>
+                {/* Actions */}
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => handleTakeOrder(order)}
+                    disabled={!currentUserId || isMine || assignMutation.isPending}
+                    className="flex-1 gap-1 min-h-[44px]"
+                  >
+                    <Hand className="h-4 w-4" />
+                    {isMine ? "Mine" : "Take"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAssignOrder(order)}
+                    className="flex-1 gap-1 min-h-[44px]"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    Assign
+                  </Button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop table (md+) */}
+      <div className="hidden md:block rounded-xl border border-border/60 bg-white shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border/40 text-muted-foreground">
