@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/auth-client";
@@ -52,8 +53,12 @@ export default function AdminOrders() {
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
+  const [searchParams] = useSearchParams();
+  const initialStatus = STATUSES.includes(searchParams.get("status") ?? "")
+    ? (searchParams.get("status") as string)
+    : "pending";
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
+  const [status, setStatus] = useState(initialStatus);
   const [category, setCategory] = useState("all");
   const [page, setPage] = useState(0);
   const [assignOrder, setAssignOrder] = useState<AdminOrder | null>(null);
