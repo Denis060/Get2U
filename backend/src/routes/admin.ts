@@ -382,9 +382,12 @@ adminRouter.patch("/orders/:id/assign", requireRoles(["dispatcher"]), zValidator
     return c.json({ error: { message: "Order not found", code: "NOT_FOUND" } }, 404);
   }
 
-  const agent = await prisma.user.findUnique({ where: { id: agentId } });
-  if (!agent || agent.role !== "agent") {
-    return c.json({ error: { message: "Agent not found", code: "NOT_FOUND" } }, 404);
+  const assignee = await prisma.user.findUnique({ where: { id: agentId } });
+  if (!assignee || (assignee.role !== "agent" && assignee.role !== "admin")) {
+    return c.json(
+      { error: { message: "Assignee must be an agent or admin", code: "INVALID_ASSIGNEE" } },
+      400,
+    );
   }
 
   const updated = await prisma.order.update({

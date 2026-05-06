@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { useSession } from "@/lib/auth-client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +18,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Search, UserPlus } from "lucide-react";
+import { Search, UserPlus, Hand } from "lucide-react";
 import { STATUS_COLORS } from "@/types/orders";
 import { useToast } from "@/hooks/use-toast";
 
@@ -35,10 +36,11 @@ type AdminOrder = {
   agent: { id: string; name: string; email: string } | null;
 };
 
-type AgentUser = {
+type Assignee = {
   id: string;
   name: string;
   email: string;
+  role: string;
 };
 
 const STATUSES = ["all", "pending", "accepted", "in_progress", "completed", "cancelled"];
@@ -48,6 +50,8 @@ const PAGE_SIZE = 20;
 export default function AdminOrders() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id;
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [category, setCategory] = useState("all");
@@ -66,9 +70,15 @@ export default function AdminOrders() {
     queryFn: () => api.get<AdminOrder[]>(`/api/admin/orders?${params}`),
   });
 
-  const { data: agents = [] } = useQuery({
-    queryKey: ["admin", "agents-list"],
-    queryFn: () => api.get<AgentUser[]>("/api/admin/users?role=agent"),
+  const { data: assignees = [] } = useQuery({
+    queryKey: ["admin", "assignees-list"],
+    queryFn: async () => {
+      const [agents, admins] = await Promise.all([
+        api.get<Assignee[]>("/api/admin/users?role=agent"),
+        api.get<Assignee[]>("/api/admin/users?role=admin"),
+      ]);
+      return [...admins, ...agents];
+    },
     enabled: !!assignOrder,
   });
 
@@ -77,11 +87,19 @@ export default function AdminOrders() {
       api.patch(`/api/admin/orders/${orderId}/assign`, { agentId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
-      toast({ title: "Agent assigned successfully" });
+      toast({ title: "Order assigned successfully" });
       setAssignOrder(null);
       setSelectedAgent("");
     },
+    onError: () => {
+      toast({ title: "Failed to assign order", variant: "destructive" });
+    },
   });
+
+  const handleTakeOrder = (order: AdminOrder) => {
+    if (!currentUserId) return;
+    assignMutation.mutate({ orderId: order.id, agentId: currentUserId });
+  };
 
   const filtered = search.trim()
     ? orders.filter(
@@ -184,15 +202,27 @@ export default function AdminOrders() {
                       {new Date(order.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setAssignOrder(order)}
-                        className="gap-1 text-xs"
-                      >
-                        <UserPlus className="h-3 w-3" />
-                        Assign
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleTakeOrder(order)}
+                          disabled={!currentUserId || order.agent?.id === currentUserId || assignMutation.isPending}
+                          className="gap-1 text-xs"
+                        >
+                          <Hand className="h-3 w-3" />
+                          {order.agent?.id === currentUserId ? "Mine" : "Take"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setAssignOrder(order)}
+                          className="gap-1 text-xs"
+                        >
+                          <UserPlus className="h-3 w-3" />
+                          Assign
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -220,11 +250,11 @@ export default function AdminOrders() {
         </div>
       </div>
 
-      {/* Assign Agent Dialog */}
+      {/* Assign Dialog */}
       <Dialog open={!!assignOrder} onOpenChange={(open) => { if (!open) { setAssignOrder(null); setSelectedAgent(""); } }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign Agent</DialogTitle>
+            <DialogTitle>Assign Order</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             Order: <span className="font-mono">{assignOrder?.id.slice(0, 8)}…</span>
@@ -232,11 +262,13 @@ export default function AdminOrders() {
           </p>
           <Select value={selectedAgent} onValueChange={setSelectedAgent}>
             <SelectTrigger>
-              <SelectValue placeholder="Select an agent" />
+              <SelectValue placeholder="Select admin or agent" />
             </SelectTrigger>
             <SelectContent>
-              {(agents as AgentUser[]).map((a) => (
-                <SelectItem key={a.id} value={a.id}>{a.name} ({a.email})</SelectItem>
+              {(assignees as Assignee[]).map((a) => (
+                <SelectItem key={a.id} value={a.id}>
+                  {a.name} ({a.role === "admin" ? "Admin" : "Agent"}) — {a.email}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
